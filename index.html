@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0E1B3D">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--ink:#0E1B3D;--sun:#FF7A1A;--coral:#FF6B57;--mint:#1FB59A;--bg:#F5F6FB;--card:#fff;--tx:#0E1B3D;--mu:#5D6784}
 @media(prefers-color-scheme:dark){:root{--bg:#0A1230;--card:#14214A;--tx:#F3F5FF;--mu:#9AA6CF}}
@@ -79,14 +80,42 @@ async function goAdv(c){c=(c||'').trim();const mm=c.match(/[?&]a=([A-Za-z0-9]+)/
  const{data}=await sb.rpc('advisor_view',{p_code:c});
  if(!data){localStorage.removeItem('jm_code');return login('Código no válido. Revísalo con tu supervisor.')}
  localStorage.setItem('jm_code',c);advView(data)}
+function projCard(n,t,c,w){if(now.getDate()<5)return'<div class="card"><small style="color:var(--mu)">Tu proyección aparece desde el día 5 ⏳</small></div>';
+ const elw=Math.min(((now.getDay()+6)%7)+1,6),p=w&&w.last_n>0?Math.round(n+(w.n+w.last_n)/(6+elw)*c.rem):c.proj,k=t.filter(x=>x<=p).length,ex=t.length&&!k?Math.ceil((t[0]-p)/Math.max(c.rem,1)):0;
+ return`<div class="card"><b>Proyección</b><div style="margin-top:4px">Si mantienes este ritmo, cierras el mes con <b style="font-size:20px">${p}</b> instaladas</div><div style="font-size:13px;color:var(--mu);margin-top:4px">${k?'Con eso llegarías al <b>tramo '+k+'</b> 🎯':ex?'Con '+ex+' instalada'+(ex>1?'s':'')+' extra por día llegas al tramo 1 💪':''}</div></div>`}
+function wkCard(w){if(!w)return'';let h='';const L=w.levels,LL=w.last_levels;
+ if(L&&L.length){const b=w.override!=null?w.override:bonusOf(L,w.n),nx=L.find(l=>l.n>w.n),end=fmt(addD(new Date(w.start+'T00:00:00'),6));let dl=0;for(let i=1;i<7;i++){const d=addD(now,i);if(fmt(d)<=end&&d.getDay())dl++}
+  h+=`<div class="card"><div class="row"><b>Bono semanal</b><small style="flex:none;color:var(--mu)">${w.override!=null?'Confirmado':'Estimado'}</small></div><div style="font-size:26px;font-weight:800;margin:4px 0">S/ ${b} <small style="font-size:13px;font-weight:400;color:var(--mu)">con ${w.n} instaladas esta semana</small></div>${ladder(w.n,L.map(l=>l.n))}<div style="font-size:13px;color:var(--mu)">${nx?'¡Te faltan <b>'+(nx.n-w.n)+'</b> para subir a S/ '+nx.amt+'! Quedan '+dl+' días hábiles 💪':'¡Llegaste al bono máximo de la semana! 🎉'}</div></div>`}
+ if(LL&&LL.length){const b2=w.last_override!=null?w.last_override:bonusOf(LL,w.last_n);h+=`<div class="card row"><span>Semana pasada · cerrada</span><b style="flex:none">${w.last_n} instaladas · S/ ${b2}</b></div>`}
+ return h}
 function advView(d){ADV=1;const t=d.tiers||[],n=d.n,c=calc(n,t),up=d.updated?new Date(d.updated).toLocaleDateString('es-PE',{day:'numeric',month:'short'}):'—';
  A.innerHTML=`<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>${hi()}, ${e(d.name.split(' ')[0].toUpperCase())}</h1><p>${phrase(n,t,c)}</p>
- <div style="margin-top:18px"><span class="big">${n}</span> instaladas</div>${t.length?ladder(n,t):''}</div>
- <div class="st">${c.nx?stat('Te faltan para tu siguiente tramo ('+c.nx+')',c.pend)+stat('Ritmo ideal por día hábil',c.perDay.toFixed(1)):stat('Estado',t.length?'¡Meta máxima!':'Sin metas aún')}${stat('Proyección a fin de mes',c.proj)}${stat('Días hábiles que quedan',c.rem)}</div>
- <p style="color:var(--mu);font-size:13px">Actualizado: ${up}</p><button class="g" onclick="localStorage.removeItem('jm_code');login()">Salir</button>`}
+ <div style="margin-top:18px"><span class="big">${n}</span> instaladas</div>${d.today>0?'<div style="margin-top:6px;color:#DDE3FF;font-size:13px">Hoy sumaste '+d.today+' · ¡qué día! 🔥</div>':''}${t.length?ladder(n,t):''}</div>
+ ${d.msg?`<div class="card" style="border-left:4px solid var(--sun)">📣 <b>${e(d.msg)}</b></div>`:''}<div class="st">${c.nx?stat('Te faltan para tu siguiente tramo ('+c.nx+')',c.pend)+stat('Ritmo ideal por día hábil',c.perDay.toFixed(1)):stat('Estado',t.length?'¡Meta máxima!':'Sin metas aún')}${stat('Días hábiles que quedan',c.rem)}</div>
+ ${projCard(n,t,c,d.week)}${wkCard(d.week)}<p style="color:var(--mu);font-size:13px">Actualizado: ${up}</p><button class="g" onclick="localStorage.removeItem('jm_code');login()">Salir</button>`}
 
 /* ---------- SUPERVISOR ---------- */
 const S={tab:'res',adv:[],prof:[],team:[],ins:{},P:null,msg:''};
+const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const addD=(d,k)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+k),wsOf=d=>addD(d,-((d.getDay()+6)%7));
+const bonusOf=(L,n)=>(L||[]).reduce((b,l)=>n>=l.n?l.amt:b,0);
+const parseB=s=>String(s).split(',').map(x=>x.split(':').map(Number)).filter(x=>x[0]&&x[1]>=0).map(x=>({n:x[0],amt:x[1]})).sort((a,b)=>a.n-b.n);
+const rulesFor=(pf,ws)=>(S.br.find(r=>r.profile==pf&&r.month==fmt(ws).slice(0,7))||{}).levels;
+const sugDate=()=>now.getDay()==1&&now.getHours()<12?fmt(addD(now,-1)):fmt(now);
+function incN(id,a,b){const rs=S.rep.filter(r=>r.advisor_id==id).sort((x,y)=>x.day<y.day?-1:1);let t=0;
+ rs.forEach((r,i)=>{if(r.day<a||r.day>b)return;const pv=rs.slice(0,i).filter(x=>x.day.slice(0,7)==r.day.slice(0,7)).pop();t+=r.n-(pv?pv.n:(i==0?r.n:0))});return t}
+const wkN=(id,ws)=>incN(id,fmt(ws),fmt(addD(ws,6)));
+function projR(id,n){const d=now.getDate();if(d<5)return'';const lo=calc(n,[]).proj,rs=S.rep.filter(r=>r.advisor_id==id&&r.day>=fmt(addD(now,-6)));if(rs.length<3)return' · proy. '+lo;
+ const hi=Math.round(n+incN(id,fmt(addD(now,-6)),fmt(now))/6*calc(n,[]).rem),a=Math.min(lo,hi),b=Math.max(lo,hi);return' · proy. '+(a==b?a:a+'–'+b)}
+function closeBanner(){let d=addD(now,1);if(!d.getDay())d=addD(d,1);return d.getMonth()!=now.getMonth()&&!S.cl.some(r=>r.month==MO)?'<div class="card" style="border-left:4px solid var(--sun)">📌 <b>Hoy cierra el mes.</b> Pega el último reporte, toca Cerrar mes y descarga el respaldo.</div>':''}
+function copyRes(b){const L=S.adv.filter(a=>a.active).map(a=>[a.name,S.ins[a.id]?.n||0]).sort((x,y)=>y[1]-x[1]),c=calc(tot(),S.team);
+ const t='*'+APP+'* · '+fmt(now)+'\nEquipo: *'+tot()+'* instaladas'+(c.nx?' (faltan '+c.pend+' para '+c.nx+')':' ¡todos los tramos logrados!')+'\n\n'+L.map((x,i)=>(i+1)+'. '+x[0]+' – '+x[1]).join('\n')+'\n\n¡Vamos con todo! 💪';
+ navigator.clipboard.writeText(t);b.textContent='¡Resumen copiado!'}
+async function saveNote(){const v=$('#nt').value.trim();await sb.from('messages').upsert({id:1,body:v,updated_at:new Date().toISOString()});S.note=v;S.msg=v?'✔ Mensaje publicado para los asesores':'✔ Mensaje quitado';sup()}
+async function backup(){const T=['advisors','installs','reports','bonus_rules','bonus_overrides','closes','profiles','settings'],nm=Object.fromEntries(S.adv.map(a=>[a.id,a.name])),wb=XLSX.utils.book_new();
+ for(const t of T){const{data}=await sb.from(t).select('*').limit(10000);const rows=(data||[]).map(r=>{const o={};if(r.advisor_id)o.asesor=nm[r.advisor_id]||'';for(const k in r)o[k]=Array.isArray(r[k])?r[k].join(','):(r[k]&&typeof r[k]=='object')?JSON.stringify(r[k]):r[k];return o});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),t)}
+ XLSX.writeFile(wb,'respaldo-instaladas-jm-'+fmt(now)+'.xlsx')}
 const tiersOf=a=>a.custom_tiers?.length?a.custom_tiers:(S.prof.find(p=>p.name==a.profile)||{}).tiers||[];
 async function goSup(){const em=$('#em').value.trim(),pw=$('#pw').value;const{error}=await sb.auth.signInWithPassword({email:em,password:pw});
  if(error)return $('#m').textContent='Usuario o contraseña incorrectos.';
@@ -94,48 +123,63 @@ async function goSup(){const em=$('#em').value.trim(),pw=$('#pw').value;const{er
  supInit()}
 function supOut(){sb.auth.signOut();localStorage.jm_auto='0';login()}
 async function supInit(){ADV=0;const{data:{user}}=await sb.auth.getUser();S.name=(user.user_metadata?.name||user.email.split('@')[0]).split(/[ ._]/)[0].toUpperCase();await load();sup()}
-async function load(){const[a,p,s,i,cl]=await Promise.all([sb.from('advisors').select('*').order('name'),sb.from('profiles').select('*').eq('month',MO),sb.from('settings').select('*').eq('month',MO),sb.from('installs').select('*').eq('month',MO),sb.from('closes').select('*').order('month',{ascending:false})]);
- S.cl=cl.data||[];S.adv=a.data||[];S.prof=p.data||[];S.team=(s.data?.[0]||{}).team_tiers||[];S.ins=Object.fromEntries((i.data||[]).map(r=>[r.advisor_id,r]))}
+async function load(){const[a,p,s,i,cl,rp,br,ov,mg]=await Promise.all([sb.from('advisors').select('*').order('name'),sb.from('profiles').select('*').eq('month',MO),sb.from('settings').select('*').eq('month',MO),sb.from('installs').select('*').eq('month',MO),sb.from('closes').select('*').order('month',{ascending:false}),sb.from('reports').select('*').gte('day',fmt(addD(now,-45))).limit(5000),sb.from('bonus_rules').select('*'),sb.from('bonus_overrides').select('*'),sb.from('messages').select('*').eq('id',1)]);
+ S.cl=cl.data||[];S.rep=rp.data||[];S.note=(mg.data?.[0]||{}).body||'';S.br=br.data||[];S.ov=ov.data||[];S.adv=a.data||[];S.prof=p.data||[];S.team=(s.data?.[0]||{}).team_tiers||[];S.ins=Object.fromEntries((i.data||[]).map(r=>[r.advisor_id,r]))}
 const tot=()=>S.adv.filter(a=>a.active).reduce((s,a)=>s+(S.ins[a.id]?.n||0),0);
-function sup(){const T=S.team,n=tot(),c=calc(n,T),tabs=[['res','Resumen'],['peg','Pegar'],['met','Metas'],['ase','Asesores'],['cie','Cierre']];
+function sup(){const T=S.team,n=tot(),c=calc(n,T),tabs=[['res','Resumen'],['peg','Pegar'],['met','Metas'],['ase','Asesores'],['bon','Bonos'],['cie','Cierre']];
  A.innerHTML=`<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>${hi()}, ${e(S.name)}</h1><p>${phrase(n,T,c)}</p>
  <div style="margin-top:16px"><span class="big">${n}</span> instaladas del equipo</div>${T.length?ladder(n,T):''}</div>
- <div class="tabs">${tabs.map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';S.msg='';sup()">${l}</button>`).join('')}</div>
+ ${closeBanner()}<div class="tabs">${tabs.map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';S.msg='';sup()">${l}</button>`).join('')}</div>
  <div class="card">${tabHtml(c)}<p class="err">${S.msg}</p></div><button class="g" style="margin-top:14px" onclick="supOut()">Salir</button>`}
 function tabHtml(c){
- if(S.tab=='res')return`<div class="row"><div>Siguiente tramo equipo: <b>${c.nx||'¡todos logrados!'}</b></div><div>Faltan: <b>${c.pend}</b> · Ideal/día: <b>${c.perDay.toFixed(1)}</b></div></div>
- ${S.adv.filter(a=>a.active).sort((x,y)=>(S.ins[y.id]?.n||0)-(S.ins[x.id]?.n||0)||x.name.localeCompare(y.name)).map(a=>{const n=S.ins[a.id]?.n||0,t=tiersOf(a),k=calc(n,t),st=!t.length?'Sin meta':!k.nx?'Logrado':k.idx?'Tramo '+k.idx:'En camino';return`<div class="ar"><div class="r1"><b>${e(a.name)}</b><span class="n">${n}</span><span class="chip ${t.length&&!k.nx?'ok':''}">${st}</span></div><div class="r2">${!t.length?'Aún sin meta asignada':k.nx?'Tramo '+k.nx+' · faltan '+k.pend+' · '+k.perDay.toFixed(1)+' por día':'¡Todos los tramos logrados!'}</div></div>`}).join('')}`;
- if(S.tab=='peg'){const P=S.P;let pv='';if(P){const names=S.adv.filter(a=>a.active).map(a=>a.name.toUpperCase()),unk=Object.keys(P).filter(k=>!names.includes(k));
+ if(S.tab=='res')return`<button class="g" style="margin:0 0 8px" onclick="copyRes(this)">Copiar resumen para WhatsApp</button><div class="row" style="margin-bottom:8px"><input id="nt" placeholder="Mensaje para todos los asesores" value="${e(S.note||'')}"><button class="s" onclick="saveNote()">Publicar</button></div><div class="row"><div>Siguiente tramo equipo: <b>${c.nx||'¡todos logrados!'}</b></div><div>Faltan: <b>${c.pend}</b> · Ideal/día: <b>${c.perDay.toFixed(1)}</b></div></div>
+ ${S.adv.filter(a=>a.active).sort((x,y)=>(S.ins[y.id]?.n||0)-(S.ins[x.id]?.n||0)||x.name.localeCompare(y.name)).map(a=>{const n=S.ins[a.id]?.n||0,t=tiersOf(a),k=calc(n,t),st=!t.length?'Sin meta':!k.nx?'Logrado':k.idx?'Tramo '+k.idx:'En camino';return`<div class="ar"><div class="r1"><b>${e(a.name)}</b><span class="n">${n}</span><span class="chip ${t.length&&!k.nx?'ok':''}">${st}</span></div><div class="r2">${!t.length?'Aún sin meta asignada':k.nx?'Tramo '+k.nx+' · faltan '+k.pend+' · '+k.perDay.toFixed(1)+' por día':'¡Todos los tramos logrados!'}${projR(a.id,n)}</div></div>`}).join('')}`;
+ if(S.tab=='peg'){const P=S.P;let pv='';const ds=[...new Set(S.rep.map(r=>r.day))].sort().reverse().slice(0,8),dl=ds.length?`<b style="display:block;margin-top:14px">Reportes cargados</b>${ds.map(d=>`<div class="row"><span>${d}</span><button class="s g" onclick="delDay('${d}')">Borrar</button></div>`).join('')}`:'';if(P){const names=S.adv.filter(a=>a.active).map(a=>a.name.toUpperCase()),unk=Object.keys(P).filter(k=>!names.includes(k));
   pv=`<table>${S.adv.filter(a=>a.active).map(a=>`<tr><td>${e(a.name)}</td><td>${P[a.name.toUpperCase()]??0}</td></tr>`).join('')}</table>
   ${unk.length?`<p class="err">⚠ Nombres desconocidos (NO se suman):</p>${unk.map(k=>`<div class="row"><span>${e(k)}: ${P[k]}</span><button class="s g" onclick="addAdv('${e(k).replace(/'/g,'')}')">Agregar como asesor</button></div>`).join('')}`:'<p>✔ Todos los nombres son reconocidos.</p>'}
   <button onclick="savePaste()">Guardar avance</button>`}
-  return`<b>Pega el reporte (ASESOR e INSTALADAS acumuladas del mes)</b><textarea id="tx" placeholder="NOMBRE&#9;INSTALADAS">${e(S.txt||'')}</textarea><button class="g" onclick="prev()">Vista previa</button>${pv}`}
+  return`<b>Fecha del reporte</b><input type="date" id="rd" value="${S.rd||sugDate()}" onchange="S.rd=this.value"><small style="color:var(--mu)">Si pegas el lunes en la mañana con lo del domingo, elige el domingo.</small><b style="display:block;margin-top:10px">Pega el reporte (ASESOR e INSTALADAS acumuladas del mes)</b><textarea id="tx" placeholder="NOMBRE&#9;INSTALADAS">${e(S.txt||'')}</textarea><button class="g" onclick="prev()">Vista previa</button>${pv}${dl}`}
  if(S.tab=='met')return`<b>Meta del equipo (3 tramos)</b><input id="tt" value="${S.team.join(', ')}" placeholder="140, 160, 180">
  <b style="display:block;margin-top:14px">Perfiles de asesor (2 o 3 tramos)</b>${S.prof.map(p=>`<div class="row"><input value="${e(p.name)}" disabled><input id="pf_${e(p.name)}" value="${p.tiers.join(', ')}"></div>`).join('')}
  <div class="row"><input id="pn" placeholder="Nuevo perfil (ej. FULL TIME)"><input id="pt" placeholder="80, 91"></div>
- <button onclick="saveMetas()">Guardar metas de ${MO}</button><button class="g" onclick="copyPrev()">Copiar metas del mes anterior</button>`;
+ <b style="display:block;margin-top:14px">Bono semanal por perfil (instaladas:monto)</b>${S.prof.map(p=>`<div class="row"><input value="${e(p.name)}" disabled><input id="bn_${e(p.name)}" placeholder="10:50, 12:65" value="${(rulesFor(p.name,new Date(now.getFullYear(),now.getMonth(),1))||[]).map(l=>l.n+':'+l.amt).join(', ')}"></div>`).join('')}<button onclick="saveMetas()">Guardar metas de ${MO}</button><button class="g" onclick="copyPrev()">Copiar metas del mes anterior</button>`;
  if(S.tab=='ase')return`${S.adv.map(a=>`<div class="ar"><div class="r1"><b style="${a.active?'':'opacity:.5'}">${e(a.name)}</b><select class="ps" onchange="upd('${a.id}',{profile:this.value||null})"><option value="">Sin perfil</option>${S.prof.map(p=>`<option ${a.profile==p.name?'selected':''}>${e(p.name)}</option>`).join('')}</select><button class="s g" onclick="const d=this.closest('.ar').querySelector('.mo');d.hidden=!d.hidden">⋯</button></div>
 <div class="mo" hidden><input placeholder="Meta especial (opcional)" value="${(a.custom_tiers||[]).join(', ')}" onchange="upd('${a.id}',{custom_tiers:parseT(this.value).length?parseT(this.value):null})"><div class="row" style="margin-top:6px"><label><input type="checkbox" style="width:auto;margin:0 6px 0 0" ${a.active?'checked':''} onchange="upd('${a.id}',{active:this.checked})">Activo</label><button class="s g" onclick="navigator.clipboard.writeText(location.origin+location.pathname+'?a=${a.code}');this.textContent='¡Link copiado!'">Copiar link</button><button class="s g" onclick="newCode('${a.id}')">Nuevo link</button><button class="s g" onclick="delAdv('${a.id}')">Quitar</button></div></div></div>`).join('')}
 <div class="row" style="margin-top:12px"><input id="na" placeholder="Nuevo asesor (como viene en el reporte)"><button class="s" onclick="addAdv($('#na').value)">Agregar</button></div>`;
- if(S.tab=='cie'){const rows=[{month:MO,live:1,data:{total:tot(),team_tiers:S.team,advisors:S.adv.filter(a=>a.active).map(a=>({name:a.name,n:S.ins[a.id]?.n||0}))}},...S.cl.filter(r=>r.month!=MO)];
-return`<p>Guarda el resumen final de <b>${MO}</b> en el histórico. El mes siguiente empieza en cero automáticamente.</p><button onclick="closeMonth()">Cerrar mes ${MO}</button>
+ if(S.tab=='bon'){const ws=S.bw?addD(wsOf(now),-7):wsOf(now),k=fmt(ws),sun=fmt(addD(wsOf(now),-1)),pend=now.getDay()==1&&!S.rep.some(r=>r.day==sun);
+ const L=S.adv.filter(a=>a.active).map(a=>{const n=wkN(a.id,ws),lv=rulesFor(a.profile,ws),ov=S.ov.find(o=>o.advisor_id==a.id&&o.week_start==k);return{a,n,lv,ov,b:ov?ov.amount:bonusOf(lv,n),nx:(lv||[]).find(l=>l.n>n)}}).sort((x,y)=>y.n-x.n);
+ return`<div class="row"><button class="s ${S.bw?'g':''}" onclick="S.bw=0;sup()">Esta semana</button><button class="s ${S.bw?'':'g'}" onclick="S.bw=1;sup()">Semana pasada</button></div>
+ <p><b>Semana del ${k} al ${fmt(addD(ws,6))}</b> <small style="color:var(--mu)">estimado · ✓ = corregido por ti</small></p>
+ ${pend?'<div class="chip" style="display:block;background:#FF7A1A55;margin-bottom:6px">Semana pasada pendiente: falta cargar el reporte del domingo</div>':''}
+ ${L.map(x=>`<div class="ar"><div class="r1"><b>${e(x.a.name)}</b><span class="n">${x.n}</span><span class="chip ${x.b?'ok':''}">S/ ${x.b}${x.ov?' ✓':''}</span><button class="s g" onclick="editBonus('${x.a.id}','${k}',${x.b})">✎</button></div><div class="r2">${!x.lv?'Sin regla de bono para este perfil':(x.a.profile||'')+' · '+(x.nx?'faltan '+(x.nx.n-x.n)+' para S/ '+x.nx.amt:'¡nivel máximo!')}</div></div>`).join('')}
+ <p style="margin-top:10px"><b>Total estimado: S/ ${L.reduce((s,x)=>s+x.b,0)}</b></p>`}
+if(S.tab=='cie'){const rows=[{month:MO,live:1,data:{total:tot(),team_tiers:S.team,advisors:S.adv.filter(a=>a.active).map(a=>({name:a.name,n:S.ins[a.id]?.n||0}))}},...S.cl.filter(r=>r.month!=MO)];
+return`<p>Guarda el resumen final de <b>${MO}</b> en el histórico. El mes siguiente empieza en cero automáticamente.</p><button onclick="closeMonth()">Cerrar mes ${MO}</button><button class="g" onclick="backup()">Descargar respaldo (Excel)</button>
 <b style="display:block;margin-top:16px">Histórico de meses</b>${rows.map((r,i)=>{const d=r.data,pv=rows[i+1]?.data?.total,df=pv==null?'':' ('+(d.total-pv>=0?'+':'')+(d.total-pv)+' vs mes anterior)',T=d.team_tiers||[];
 return`<details style="margin-top:8px"><summary><b>${r.month}${r.live?' (en curso)':''}</b>: ${d.total} instaladas · tramo ${T.filter(x=>x<=d.total).length}/${T.length}${df}</summary><table>${[...d.advisors].sort((x,y)=>y.n-x.n).map(x=>`<tr><td>${e(x.name)}</td><td>${x.n}</td></tr>`).join('')}</table></details>`}).join('')}`}}
 function prev(){S.txt=$('#tx').value;const m={};$('#tx').value.split('\n').forEach(l=>{l=l.replace(/[^\x20-\x7E\u00C0-\u017F\t]/g,'').trim();const x=l.match(/^(.*?)[\t ,;]+(\d+)\s*$/);if(!x)return;const nm=x[1].replace(/\s+/g,' ').trim().toUpperCase();if(!nm||nm=='LAZO')return;m[nm]=(m[nm]||0)+ +x[2]});S.P=m;sup()}
-async function savePaste(){const rows=S.adv.filter(a=>a.active).map(a=>({month:MO,advisor_id:a.id,n:S.P[a.name.toUpperCase()]||0,updated_at:new Date().toISOString()}));
- const dr=S.adv.filter(a=>a.active&&(S.ins[a.id]?.n||0)>(S.P[a.name.toUpperCase()]||0)).map(a=>a.name+' ('+S.ins[a.id].n+' → '+(S.P[a.name.toUpperCase()]||0)+')');if(dr.length&&!confirm('Estos asesores BAJARÍAN:\n'+dr.join('\n')+'\n¿Guardar igual?'))return;
- const{error}=await sb.from('installs').upsert(rows);S.msg=error?error.message:'✔ Avance guardado';if(!error){S.P=null;await load()}sup()}
+async function savePaste(){const day=S.rd||sugDate(),mo=day.slice(0,7),act=S.adv.filter(a=>a.active),v=a=>S.P[a.name.toUpperCase()]||0;
+ const dr=mo==MO?act.filter(a=>(S.ins[a.id]?.n||0)>v(a)).map(a=>a.name+' ('+S.ins[a.id].n+' → '+v(a)+')'):[];
+ if(dr.length&&!confirm('Estos asesores BAJARÍAN:\n'+dr.join('\n')+'\n¿Guardar igual?'))return;
+ if(!confirm('¿Guardar el reporte con fecha '+day+'?'))return;
+ const r1=await sb.from('installs').upsert(act.map(a=>({month:mo,advisor_id:a.id,n:v(a),updated_at:new Date().toISOString()})));
+ const r2=await sb.from('reports').upsert(act.map(a=>({day,advisor_id:a.id,n:v(a)})));
+ const er=r1.error||r2.error;S.msg=er?er.message:'✔ Avance guardado con fecha '+day;if(!er){S.P=null;S.rd=null;await load()}sup()}
+async function delDay(d){if(confirm('¿Borrar los datos diarios del '+d+'?')){await sb.from('reports').delete().eq('day',d);await load();sup()}}
 async function addAdv(n){n=(n||'').trim().toUpperCase().replace(/\s+/g,' ');if(!n)return;const{error}=await sb.from('advisors').insert({name:n});S.msg=error?error.message:'';await load();sup()}
 async function upd(id,o){await sb.from('advisors').update(o).eq('id',id);await load();sup()}
 function newCode(id){if(confirm('El link anterior dejará de funcionar. ¿Generar uno nuevo?')){const c=[...crypto.getRandomValues(new Uint8Array(6))].map(b=>b.toString(16).padStart(2,'0')).join('');upd(id,{code:c})}}
+async function editBonus(id,k,cur){const v=prompt('Monto final del bono (S/). Déjalo vacío para volver al cálculo automático:',cur);if(v===null)return;
+ if(v.trim()==='')await sb.from('bonus_overrides').delete().eq('week_start',k).eq('advisor_id',id);else await sb.from('bonus_overrides').upsert({week_start:k,advisor_id:id,amount:Math.round(+v)||0});
+ await load();sup()}
 async function delAdv(id){if(confirm('¿Quitar este asesor y su avance?')){await sb.from('advisors').delete().eq('id',id);await load();sup()}}
 async function saveMetas(){const tt=parseT($('#tt').value);await sb.from('settings').upsert({month:MO,team_tiers:tt});
  const rows=S.prof.map(p=>({month:MO,name:p.name,tiers:parseT($('[id="pf_'+p.name+'"]').value)}));const nn=$('#pn').value.trim().toUpperCase(),nt=parseT($('#pt').value);if(nn&&nt.length)rows.push({month:MO,name:nn,tiers:nt});
- if(rows.length)await sb.from('profiles').upsert(rows);S.msg='✔ Metas guardadas';await load();sup()}
+ if(rows.length)await sb.from('profiles').upsert(rows);const bb=S.prof.map(p=>({month:MO,profile:p.name,levels:parseB($('[id="bn_'+p.name+'"]').value)})).filter(r=>r.levels.length);if(bb.length)await sb.from('bonus_rules').upsert(bb);S.msg='✔ Metas guardadas';await load();sup()}
 async function copyPrev(){const d=new Date(now.getFullYear(),now.getMonth()-1,1),pm=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
  const[{data:p},{data:s}]=await Promise.all([sb.from('profiles').select('*').eq('month',pm),sb.from('settings').select('*').eq('month',pm)]);
  if(p?.length)await sb.from('profiles').upsert(p.map(x=>({...x,month:MO})));if(s?.length)await sb.from('settings').upsert({month:MO,team_tiers:s[0].team_tiers});
- S.msg='✔ Metas copiadas. Ajusta lo que cambie.';await load();sup()}
+ const pb=S.br.filter(r=>r.month==pm);if(pb.length)await sb.from('bonus_rules').upsert(pb.map(r=>({...r,month:MO})));S.msg='✔ Metas copiadas. Ajusta lo que cambie.';await load();sup()}
 async function closeMonth(){if(!confirm('¿Cerrar '+MO+'?'))return;const n=tot(),data={team_tiers:S.team,total:n,advisors:S.adv.filter(a=>a.active).map(a=>({name:a.name,n:S.ins[a.id]?.n||0,tiers:tiersOf(a)}))};
  const{error}=await sb.from('closes').upsert({month:MO,data});S.msg=error?error.message:'✔ Mes cerrado y guardado en el histórico';await load();sup()}
 
