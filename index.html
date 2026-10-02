@@ -84,6 +84,7 @@ function projCard(n,t,c,w){if(now.getDate()<5)return'<div class="card"><small st
  const elw=Math.min(((now.getDay()+6)%7)+1,6),p=w&&w.last_n>0?Math.round(n+(w.n+w.last_n)/(6+elw)*c.rem):c.proj,k=t.filter(x=>x<=p).length,ex=t.length&&!k?Math.ceil((t[0]-p)/Math.max(c.rem,1)):0;
  return`<div class="card"><b>Proyección</b><div style="margin-top:4px">Si mantienes este ritmo, cierras el mes con <b style="font-size:20px">${p}</b> instaladas</div><div style="font-size:13px;color:var(--mu);margin-top:4px">${k?'Con eso llegarías al <b>tramo '+k+'</b> 🎯':ex?'Con '+ex+' instalada'+(ex>1?'s':'')+' extra por día llegas al tramo 1 💪':''}</div></div>`}
 function wkCard(w){if(!w)return'';let h='';const L=w.levels,LL=w.last_levels;
+ if(L&&L.length&&w.start<BONUS_START)return`<div class="card"><div class="row"><b>Bono semanal</b><small style="flex:none;color:var(--mu)">Empieza el lunes 5 de oct</small></div><div style="font-size:14px;margin-top:6px">${L.map(l=>'<b>'+l.n+'</b> instaladas en la semana = <b>S/ '+l.amt+'</b>').join('<br>')}</div><div style="font-size:13px;color:var(--mu);margin-top:6px">¡Prepárate! Desde el lunes empiezas a sumar para tu bono 🚀</div></div>`;
  if(L&&L.length){const b=w.override!=null?w.override:bonusOf(L,w.n),nx=L.find(l=>l.n>w.n),end=fmt(addD(new Date(w.start+'T00:00:00'),6));let dl=0;for(let i=1;i<7;i++){const d=addD(now,i);if(fmt(d)<=end&&d.getDay())dl++}
   h+=`<div class="card"><div class="row"><b>Bono semanal</b><small style="flex:none;color:var(--mu)">${w.override!=null?'Confirmado':'Estimado'}</small></div><div style="font-size:26px;font-weight:800;margin:4px 0">S/ ${b} <small style="font-size:13px;font-weight:400;color:var(--mu)">con ${w.n} instaladas esta semana</small></div>${ladder(w.n,L.map(l=>l.n))}<div style="font-size:13px;color:var(--mu)">${nx?'¡Te faltan <b>'+(nx.n-w.n)+'</b> para subir a S/ '+nx.amt+'! Quedan '+dl+' días hábiles 💪':'¡Llegaste al bono máximo de la semana! 🎉'}</div></div>`}
  if(LL&&LL.length){const b2=w.last_override!=null?w.last_override:bonusOf(LL,w.last_n);h+=`<div class="card row"><span>Semana pasada · cerrada</span><b style="flex:none">${w.last_n} instaladas · S/ ${b2}</b></div>`}
@@ -100,7 +101,8 @@ const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+Stri
 const addD=(d,k)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+k),wsOf=d=>addD(d,-((d.getDay()+6)%7));
 const bonusOf=(L,n)=>(L||[]).reduce((b,l)=>n>=l.n?l.amt:b,0);
 const parseB=s=>String(s).split(',').map(x=>x.split(':').map(Number)).filter(x=>x[0]&&x[1]>=0).map(x=>({n:x[0],amt:x[1]})).sort((a,b)=>a.n-b.n);
-const rulesFor=(pf,ws)=>(S.br.find(r=>r.profile==pf&&r.month==fmt(ws).slice(0,7))||{}).levels;
+const BONUS_START='2026-10-05';
+const rulesFor=(pf,ws)=>(S.br.find(r=>r.profile==pf&&r.month==fmt(ws).slice(0,7))||S.br.find(r=>r.profile==pf&&r.month==fmt(addD(ws,7)).slice(0,7))||{}).levels;
 const sugDate=()=>now.getDay()==1&&now.getHours()<12?fmt(addD(now,-1)):fmt(now);
 function incN(id,a,b){const rs=S.rep.filter(r=>r.advisor_id==id).sort((x,y)=>x.day<y.day?-1:1);let t=0;
  rs.forEach((r,i)=>{if(r.day<a||r.day>b)return;const pv=rs.slice(0,i).filter(x=>x.day.slice(0,7)==r.day.slice(0,7)).pop();t+=r.n-(pv?pv.n:(i==0?r.n:0))});return t}
