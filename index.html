@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>INSTALADAS JM</title>
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0E1B3D">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{--ink:#0E1B3D;--sun:#FF7A1A;--coral:#FF6B57;--mint:#1FB59A;--bg:#F5F6FB;--card:#fff;--tx:#0E1B3D;--mu:#5D6784}
+@media(prefers-color-scheme:dark){:root{--bg:#0A1230;--card:#14214A;--tx:#F3F5FF;--mu:#9AA6CF}}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:Sora,system-ui,sans-serif;background:var(--bg);color:var(--tx);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.w{max-width:760px;margin:auto;padding:16px}
+.hero{background:var(--ink);color:#fff;border-radius:22px;padding:22px}
+.hero h1{margin:0;font-size:26px;font-weight:800}.hero p{margin:8px 0 0;color:#DDE3FF;font-size:15px;line-height:1.5}
+.brand{font-weight:800;color:var(--sun);font-size:14px;margin-bottom:10px}
+.card{background:var(--card);border-radius:18px;padding:16px;margin-top:14px;overflow-x:auto}
+.big{font-size:64px;font-weight:800;line-height:1;color:var(--sun)}
+.ladder{position:relative;height:16px;border-radius:9px;background:#ffffff26;margin:34px 0 30px}
+.card .ladder{background:#8a93b333}
+.fill{height:100%;border-radius:9px;background:linear-gradient(90deg,var(--mint),var(--sun));transition:width .8s}
+.tk{position:absolute;top:-6px;width:3px;height:28px;background:var(--coral);border-radius:2px}
+.tk b{position:absolute;top:-20px;left:-14px;width:30px;text-align:center;font-size:12px}
+.tk.ok{background:var(--mint)}
+.st{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.st div{background:var(--card);border-radius:14px;padding:12px}.st small{color:var(--mu);display:block}.st strong{font-size:22px}
+input,select,textarea,button{font:inherit;border-radius:12px;border:1.5px solid #8a93b355;padding:11px;background:var(--card);color:var(--tx);width:100%;margin-top:8px}
+textarea{min-height:140px}button{background:var(--sun);color:var(--ink);font-weight:800;border:0;cursor:pointer}
+button.g{background:#8a93b333;color:var(--tx)}button.s{width:auto;padding:7px 12px;margin:0}
+:focus-visible{outline:3px solid var(--coral);outline-offset:2px}
+.tabs{display:flex;gap:6px;margin-top:14px;overflow-x:auto}.tabs button{width:auto;margin:0;padding:9px 14px;background:#8a93b333;color:var(--tx)}.tabs .on{background:var(--ink);color:var(--sun)}
+table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:8px 6px;text-align:left;border-bottom:1px solid #8a93b333;white-space:nowrap}
+.chip{padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600;background:#8a93b333}.chip.ok{background:var(--mint);color:#fff}
+.err{color:var(--coral);font-weight:600}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:1;min-width:120px}
+.logo{background:#fff;border-radius:14px;padding:8px 14px;display:inline-block;margin-bottom:14px}.logo img{display:block;height:40px}.logo.l img{height:56px}</style></head><body><div class="w" id="app"></div>
+<script>
+const APP="INSTALADAS JM", URL_="https://htnkfocyfgbrmhgcdwps.supabase.co", KEY="sb_publishable_CwARyGn0j0qRNjDKSdC31Q_hxpAuDNx";
+const sb=supabase.createClient(URL_,KEY), $=s=>document.querySelector(s), A=$('#app');
+const e=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const now=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Lima'}));
+const MO=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+const tc=s=>String(s).toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
+const parseT=s=>String(s).split(/[ ,\-]+/).map(Number).filter(Boolean).sort((a,b)=>a-b);
+const hi=()=>{const h=now.getHours();return h<12?'BUENOS DÍAS':h<19?'BUENAS TARDES':'BUENAS NOCHES'};
+const pick=a=>a[now.getDate()%a.length];
+function calc(n,t){const Y=now.getFullYear(),M=now.getMonth(),last=new Date(Y,M+1,0).getDate(),d=now.getDate(),
+ w=(a,b)=>{let c=0;for(let i=a;i<=b;i++)if(new Date(Y,M,i).getDay())c++;return c};
+ const tot=w(1,last),el=w(1,d),rem=w(d+1,last),nx=t.find(x=>x>n),pend=nx?nx-n:0;
+ return{nx,pend,perDay:nx&&rem?pend/rem:0,proj:el?Math.round(n/el*tot):0,idx:t.filter(x=>x<=n).length,rem}}
+function phrase(n,t,c){const L=t.length;if(L&&c.idx==L)return pick(['¡Superaste todos tus tramos! Eres imparable 🔥','¡Meta máxima lograda! Qué orgullo verte brillar 🏆']);
+ if(c.idx>0)return pick(['¡Tramo '+c.idx+' conquistado! Vamos por el siguiente 💪','¡Qué crack! Ya tienes el tramo '+c.idx+', sigue así 🚀']);
+ const p=c.nx?n/c.nx:0;
+ if(p>=.7)return pick(['¡Ya casi llegas! Un empujón más y lo logras 🚀','¡Se huele el tramo! Tú puedes 🔥']);
+ if(p>=.4)return pick(['¡Vas increíble, sigue sumando! 🙌','¡Buen ritmo! Cada instalada te acerca 💫']);
+ if(n>0)return pick(['¡Buen arranque! Cada instalada cuenta ⭐','¡Vamos con todo, lo mejor está por venir! 🌟']);
+ return pick(['¡Hoy es un gran día para tu primera instalada! 💥','¡Con ganas y actitud todo se logra! ☀️'])}
+function ladder(n,t){const mx=Math.max(...t,n,1);return`<div class="ladder"><div class="fill" style="width:${Math.min(100,n/mx*100)}%"></div>${t.map(x=>`<span class="tk ${n>=x?'ok':''}" style="left:calc(${x/mx*100}% - 1px)"><b>${x}</b></span>`).join('')}</div>`}
+const stat=(l,v)=>`<div><small>${l}</small><strong>${v}</strong></div>`;
+
+/* ---------- LOGIN ---------- */
+function login(m=''){A.innerHTML=`<div class="hero"><div class="logo l"><img src="logo.png" alt="Grupo JM Call Center"></div><h1>${APP}</h1><p>¡Bienvenido! Aquí empieza tu mejor mes 🚀</p></div>
+<div class="card"><b>Soy asesor</b><input id="cd" placeholder="Tu código de acceso" autocomplete="off"><button onclick="goAdv($('#cd').value)">Entrar</button></div>
+<div class="card"><b>Soy supervisor</b><input id="em" type="email" placeholder="Correo de usuario" autocomplete="username"><input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password"><button onclick="goSup()">Entrar</button></div>
+<p class="err" id="m">${m}</p>`}
+async function goAdv(c){c=(c||'').trim().toLowerCase();if(!c)return;
+ const{data}=await sb.rpc('advisor_view',{p_code:c});
+ if(!data){localStorage.removeItem('jm_code');return login('Código no válido. Revísalo con tu supervisor.')}
+ localStorage.setItem('jm_code',c);advView(data)}
+function advView(d){const t=d.tiers||[],n=d.n,c=calc(n,t),up=d.updated?new Date(d.updated).toLocaleDateString('es-PE',{day:'numeric',month:'short'}):'—';
+ A.innerHTML=`<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>${hi()}, ${e(tc(d.name.split(' ')[0]))}</h1><p>${phrase(n,t,c)}</p>
+ <div style="margin-top:18px"><span class="big">${n}</span> instaladas</div>${t.length?ladder(n,t):''}</div>
+ <div class="st">${c.nx?stat('Te faltan para tu siguiente tramo ('+c.nx+')',c.pend)+stat('Ritmo ideal por día hábil',c.perDay.toFixed(1)):stat('Estado',t.length?'¡Meta máxima!':'Sin metas aún')}${stat('Proyección a fin de mes',c.proj)}${stat('Días hábiles que quedan',c.rem)}</div>
+ <p style="color:var(--mu);font-size:13px">Actualizado: ${up}</p><button class="g" onclick="localStorage.removeItem('jm_code');login()">Salir</button>`}
+
+/* ---------- SUPERVISOR ---------- */
+const S={tab:'res',adv:[],prof:[],team:[],ins:{},P:null,msg:''};
+const tiersOf=a=>a.custom_tiers?.length?a.custom_tiers:(S.prof.find(p=>p.name==a.profile)||{}).tiers||[];
+async function goSup(){const{error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
+ if(error)return $('#m').textContent='Usuario o contraseña incorrectos.';supInit()}
+async function supInit(){const{data:{user}}=await sb.auth.getUser();S.name=tc((user.user_metadata?.name||user.email.split('@')[0]).split(/[ ._]/)[0]);await load();sup()}
+async function load(){const[a,p,s,i]=await Promise.all([sb.from('advisors').select('*').order('name'),sb.from('profiles').select('*').eq('month',MO),sb.from('settings').select('*').eq('month',MO),sb.from('installs').select('*').eq('month',MO)]);
+ S.adv=a.data||[];S.prof=p.data||[];S.team=(s.data?.[0]||{}).team_tiers||[];S.ins=Object.fromEntries((i.data||[]).map(r=>[r.advisor_id,r]))}
+const tot=()=>S.adv.filter(a=>a.active).reduce((s,a)=>s+(S.ins[a.id]?.n||0),0);
+function sup(){const T=S.team,n=tot(),c=calc(n,T),tabs=[['res','Resumen'],['peg','Pegar datos'],['met','Metas'],['ase','Asesores'],['cie','Cierre']];
+ A.innerHTML=`<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>${hi()}, ${e(S.name)}</h1><p>${phrase(n,T,c)}</p>
+ <div style="margin-top:16px"><span class="big">${n}</span> instaladas del equipo</div>${T.length?ladder(n,T):''}</div>
+ <div class="tabs">${tabs.map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';S.msg='';sup()">${l}</button>`).join('')}</div>
+ <div class="card">${tabHtml(c)}<p class="err">${S.msg}</p></div><button class="g" style="margin-top:14px" onclick="sb.auth.signOut();login()">Salir</button>`}
+function tabHtml(c){
+ if(S.tab=='res')return`<div class="row"><div>Siguiente tramo equipo: <b>${c.nx||'¡todos logrados!'}</b></div><div>Faltan: <b>${c.pend}</b> · Ideal/día: <b>${c.perDay.toFixed(1)}</b></div></div>
+ <table><tr><th>Asesor</th><th>Inst.</th><th>Tramo</th><th>Faltan</th><th>Por día</th><th>Estado</th></tr>${S.adv.filter(a=>a.active).map(a=>{const n=S.ins[a.id]?.n||0,t=tiersOf(a),k=calc(n,t);return`<tr><td>${e(a.name)}</td><td>${n}</td><td>${k.nx||'✓'}</td><td>${k.pend}</td><td>${k.perDay.toFixed(1)}</td><td><span class="chip ${t.length&&!k.nx?'ok':''}">${!t.length?'Sin meta':!k.nx?'Logrado':k.idx?'Tramo '+k.idx:'En camino'}</span></td></tr>`}).join('')}</table>`;
+ if(S.tab=='peg'){const P=S.P;let pv='';if(P){const names=S.adv.filter(a=>a.active).map(a=>a.name.toUpperCase()),unk=Object.keys(P).filter(k=>!names.includes(k));
+  pv=`<table>${S.adv.filter(a=>a.active).map(a=>`<tr><td>${e(a.name)}</td><td>${P[a.name.toUpperCase()]??0}</td></tr>`).join('')}</table>
+  ${unk.length?`<p class="err">⚠ Nombres desconocidos (NO se suman):</p>${unk.map(k=>`<div class="row"><span>${e(k)}: ${P[k]}</span><button class="s g" onclick="addAdv('${e(k).replace(/'/g,'')}')">Agregar como asesor</button></div>`).join('')}`:'<p>✔ Todos los nombres son reconocidos.</p>'}
+  <button onclick="savePaste()">Guardar avance</button>`}
+  return`<b>Pega el reporte (ASESOR e INSTALADAS acumuladas del mes)</b><textarea id="tx" placeholder="NOMBRE&#9;INSTALADAS"></textarea><button class="g" onclick="prev()">Vista previa</button>${pv}`}
+ if(S.tab=='met')return`<b>Meta del equipo (3 tramos)</b><input id="tt" value="${S.team.join(', ')}" placeholder="140, 160, 180">
+ <b style="display:block;margin-top:14px">Perfiles de asesor (2 o 3 tramos)</b>${S.prof.map(p=>`<div class="row"><input value="${e(p.name)}" disabled><input id="pf_${e(p.name)}" value="${p.tiers.join(', ')}"></div>`).join('')}
+ <div class="row"><input id="pn" placeholder="Nuevo perfil (ej. FULL TIME)"><input id="pt" placeholder="80, 91"></div>
+ <button onclick="saveMetas()">Guardar metas de ${MO}</button><button class="g" onclick="copyPrev()">Copiar metas del mes anterior</button>`;
+ if(S.tab=='ase')return`${S.adv.map(a=>`<div class="card" style="margin:8px 0;padding:12px"><div class="row"><b>${e(a.name)}</b><select onchange="upd('${a.id}',{profile:this.value||null})"><option value="">Sin perfil</option>${S.prof.map(p=>`<option ${a.profile==p.name?'selected':''}>${e(p.name)}</option>`).join('')}</select>
+ <input placeholder="Meta especial (opcional)" value="${(a.custom_tiers||[]).join(', ')}" onchange="upd('${a.id}',{custom_tiers:parseT(this.value).length?parseT(this.value):null})"></div>
+ <div class="row"><label><input type="checkbox" style="width:auto" ${a.active?'checked':''} onchange="upd('${a.id}',{active:this.checked})"> Activo</label><button class="s g" onclick="navigator.clipboard.writeText(location.origin+location.pathname+'?a=${a.code}');this.textContent='¡Link copiado!'">Copiar link</button><button class="s g" onclick="delAdv('${a.id}')">Quitar</button></div></div>`).join('')}
+ <div class="row"><input id="na" placeholder="Nuevo asesor (nombre como viene en el reporte)"><button class="s" onclick="addAdv($('#na').value)">Agregar</button></div>`;
+ if(S.tab=='cie')return`<p>Guarda el resumen final de <b>${MO}</b> en el histórico. El mes siguiente empieza en cero automáticamente.</p><button onclick="closeMonth()">Cerrar mes ${MO}</button>`}
+function prev(){const m={};$('#tx').value.split('\n').forEach(l=>{l=l.replace(/[^\x20-\x7E\u00C0-\u017F\t]/g,'').trim();const x=l.match(/^(.*?)[\t ,;]+(\d+)\s*$/);if(!x)return;const nm=x[1].replace(/\s+/g,' ').trim().toUpperCase();if(!nm||nm=='LAZO')return;m[nm]=(m[nm]||0)+ +x[2]});S.P=m;sup()}
+async function savePaste(){const rows=S.adv.filter(a=>a.active).map(a=>({month:MO,advisor_id:a.id,n:S.P[a.name.toUpperCase()]||0,updated_at:new Date().toISOString()}));
+ const{error}=await sb.from('installs').upsert(rows);S.msg=error?error.message:'✔ Avance guardado';if(!error){S.P=null;await load()}sup()}
+async function addAdv(n){n=(n||'').trim().toUpperCase().replace(/\s+/g,' ');if(!n)return;const{error}=await sb.from('advisors').insert({name:n});S.msg=error?error.message:'';await load();if(S.tab=='peg')prev();else sup()}
+async function upd(id,o){await sb.from('advisors').update(o).eq('id',id);await load();sup()}
+async function delAdv(id){if(confirm('¿Quitar este asesor y su avance?')){await sb.from('advisors').delete().eq('id',id);await load();sup()}}
+async function saveMetas(){const tt=parseT($('#tt').value);await sb.from('settings').upsert({month:MO,team_tiers:tt});
+ const rows=S.prof.map(p=>({month:MO,name:p.name,tiers:parseT($('[id="pf_'+p.name+'"]').value)}));const nn=$('#pn').value.trim().toUpperCase(),nt=parseT($('#pt').value);if(nn&&nt.length)rows.push({month:MO,name:nn,tiers:nt});
+ if(rows.length)await sb.from('profiles').upsert(rows);S.msg='✔ Metas guardadas';await load();sup()}
+async function copyPrev(){const d=new Date(now.getFullYear(),now.getMonth()-1,1),pm=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+ const[{data:p},{data:s}]=await Promise.all([sb.from('profiles').select('*').eq('month',pm),sb.from('settings').select('*').eq('month',pm)]);
+ if(p?.length)await sb.from('profiles').upsert(p.map(x=>({...x,month:MO})));if(s?.length)await sb.from('settings').upsert({month:MO,team_tiers:s[0].team_tiers});
+ S.msg='✔ Metas copiadas. Ajusta lo que cambie.';await load();sup()}
+async function closeMonth(){if(!confirm('¿Cerrar '+MO+'?'))return;const n=tot(),data={team_tiers:S.team,total:n,advisors:S.adv.filter(a=>a.active).map(a=>({name:a.name,n:S.ins[a.id]?.n||0,tiers:tiersOf(a)}))};
+ const{error}=await sb.from('closes').upsert({month:MO,data});S.msg=error?error.message:'✔ Mes cerrado y guardado en el histórico'; sup()}
+
+/* ---------- INICIO ---------- */
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+(async()=>{const q=new URLSearchParams(location.search).get('a')||localStorage.getItem('jm_code');
+ const{data:{session}}=await sb.auth.getSession();
+ if(session)return supInit();if(q)return goAdv(q);login()})();
+</script></body></html>
