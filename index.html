@@ -47,7 +47,7 @@ const pick=a=>a[now.getDate()%a.length];
 function calc(n,t){const Y=now.getFullYear(),M=now.getMonth(),last=new Date(Y,M+1,0).getDate(),d=now.getDate(),
  w=(a,b)=>{let c=0;for(let i=a;i<=b;i++)if(new Date(Y,M,i).getDay())c++;return c};
  const tot=w(1,last),el=w(1,d),rem=w(d+1,last),nx=t.find(x=>x>n),pend=nx?nx-n:0;
- return{nx,pend,perDay:nx&&rem?pend/rem:0,proj:el?Math.round(n/el*tot):0,idx:t.filter(x=>x<=n).length,rem}}
+ return{nx,pend,perDay:nx?pend/(rem||1):0,proj:el?Math.round(n/el*tot):0,idx:t.filter(x=>x<=n).length,rem}}
 function phrase(n,t,c){const L=t.length;if(L&&c.idx==L)return pick(['¡Superaste todos tus tramos! Eres imparable 🔥','¡Meta máxima lograda! Qué orgullo verte brillar 🏆']);
  if(c.idx>0)return pick(['¡Tramo '+c.idx+' conquistado! Vamos por el siguiente 💪','¡Qué crack! Ya tienes el tramo '+c.idx+', sigue así 🚀']);
  const p=c.nx?n/c.nx:0;
@@ -60,10 +60,10 @@ const stat=(l,v)=>`<div><small>${l}</small><strong>${v}</strong></div>`;
 
 /* ---------- LOGIN ---------- */
 function login(m=''){A.innerHTML=`<div class="hero"><div class="logo l"><img src="logo.png" alt="Grupo JM Call Center"></div><h1>${APP}</h1><p>¡Bienvenido! Aquí empieza tu mejor mes 🚀</p></div>
-<div class="card"><b>Soy asesor</b><input id="cd" placeholder="Tu código de acceso" autocomplete="off"><button onclick="goAdv($('#cd').value)">Entrar</button></div>
+<div class="card"><b>Soy asesor</b><input id="cd" placeholder="Tu código o tu link" autocomplete="off"><button onclick="goAdv($('#cd').value)">Entrar</button></div>
 <div class="card"><b>Soy supervisor</b><input id="em" type="email" placeholder="Correo de usuario" autocomplete="username"><input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password"><button onclick="goSup()">Entrar</button></div>
 <p class="err" id="m">${m}</p>`}
-async function goAdv(c){c=(c||'').trim().toLowerCase();if(!c)return;
+async function goAdv(c){c=(c||'').trim();const mm=c.match(/[?&]a=([A-Za-z0-9]+)/);if(mm)c=mm[1];c=c.toLowerCase();if(!c)return;
  const{data}=await sb.rpc('advisor_view',{p_code:c});
  if(!data){localStorage.removeItem('jm_code');return login('Código no válido. Revísalo con tu supervisor.')}
  localStorage.setItem('jm_code',c);advView(data)}
@@ -79,8 +79,8 @@ const tiersOf=a=>a.custom_tiers?.length?a.custom_tiers:(S.prof.find(p=>p.name==a
 async function goSup(){const{error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
  if(error)return $('#m').textContent='Usuario o contraseña incorrectos.';supInit()}
 async function supInit(){const{data:{user}}=await sb.auth.getUser();S.name=tc((user.user_metadata?.name||user.email.split('@')[0]).split(/[ ._]/)[0]);await load();sup()}
-async function load(){const[a,p,s,i]=await Promise.all([sb.from('advisors').select('*').order('name'),sb.from('profiles').select('*').eq('month',MO),sb.from('settings').select('*').eq('month',MO),sb.from('installs').select('*').eq('month',MO)]);
- S.adv=a.data||[];S.prof=p.data||[];S.team=(s.data?.[0]||{}).team_tiers||[];S.ins=Object.fromEntries((i.data||[]).map(r=>[r.advisor_id,r]))}
+async function load(){const[a,p,s,i,cl]=await Promise.all([sb.from('advisors').select('*').order('name'),sb.from('profiles').select('*').eq('month',MO),sb.from('settings').select('*').eq('month',MO),sb.from('installs').select('*').eq('month',MO),sb.from('closes').select('*').order('month',{ascending:false})]);
+ S.cl=cl.data||[];S.adv=a.data||[];S.prof=p.data||[];S.team=(s.data?.[0]||{}).team_tiers||[];S.ins=Object.fromEntries((i.data||[]).map(r=>[r.advisor_id,r]))}
 const tot=()=>S.adv.filter(a=>a.active).reduce((s,a)=>s+(S.ins[a.id]?.n||0),0);
 function sup(){const T=S.team,n=tot(),c=calc(n,T),tabs=[['res','Resumen'],['peg','Pegar datos'],['met','Metas'],['ase','Asesores'],['cie','Cierre']];
  A.innerHTML=`<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>${hi()}, ${e(S.name)}</h1><p>${phrase(n,T,c)}</p>
@@ -101,14 +101,19 @@ function tabHtml(c){
  <button onclick="saveMetas()">Guardar metas de ${MO}</button><button class="g" onclick="copyPrev()">Copiar metas del mes anterior</button>`;
  if(S.tab=='ase')return`${S.adv.map(a=>`<div class="card" style="margin:8px 0;padding:12px"><div class="row"><b>${e(a.name)}</b><select onchange="upd('${a.id}',{profile:this.value||null})"><option value="">Sin perfil</option>${S.prof.map(p=>`<option ${a.profile==p.name?'selected':''}>${e(p.name)}</option>`).join('')}</select>
  <input placeholder="Meta especial (opcional)" value="${(a.custom_tiers||[]).join(', ')}" onchange="upd('${a.id}',{custom_tiers:parseT(this.value).length?parseT(this.value):null})"></div>
- <div class="row"><label><input type="checkbox" style="width:auto" ${a.active?'checked':''} onchange="upd('${a.id}',{active:this.checked})"> Activo</label><button class="s g" onclick="navigator.clipboard.writeText(location.origin+location.pathname+'?a=${a.code}');this.textContent='¡Link copiado!'">Copiar link</button><button class="s g" onclick="delAdv('${a.id}')">Quitar</button></div></div>`).join('')}
+ <div class="row"><label><input type="checkbox" style="width:auto" ${a.active?'checked':''} onchange="upd('${a.id}',{active:this.checked})"> Activo</label><button class="s g" onclick="navigator.clipboard.writeText(location.origin+location.pathname+'?a=${a.code}');this.textContent='¡Link copiado!'">Copiar link</button><button class="s g" onclick="newCode('${a.id}')">Nuevo link</button><button class="s g" onclick="delAdv('${a.id}')">Quitar</button></div></div>`).join('')}
  <div class="row"><input id="na" placeholder="Nuevo asesor (nombre como viene en el reporte)"><button class="s" onclick="addAdv($('#na').value)">Agregar</button></div>`;
- if(S.tab=='cie')return`<p>Guarda el resumen final de <b>${MO}</b> en el histórico. El mes siguiente empieza en cero automáticamente.</p><button onclick="closeMonth()">Cerrar mes ${MO}</button>`}
+ if(S.tab=='cie'){const rows=[{month:MO,live:1,data:{total:tot(),team_tiers:S.team,advisors:S.adv.filter(a=>a.active).map(a=>({name:a.name,n:S.ins[a.id]?.n||0}))}},...S.cl.filter(r=>r.month!=MO)];
+return`<p>Guarda el resumen final de <b>${MO}</b> en el histórico. El mes siguiente empieza en cero automáticamente.</p><button onclick="closeMonth()">Cerrar mes ${MO}</button>
+<b style="display:block;margin-top:16px">Histórico de meses</b>${rows.map((r,i)=>{const d=r.data,pv=rows[i+1]?.data?.total,df=pv==null?'':' ('+(d.total-pv>=0?'+':'')+(d.total-pv)+' vs mes anterior)',T=d.team_tiers||[];
+return`<details style="margin-top:8px"><summary><b>${r.month}${r.live?' (en curso)':''}</b>: ${d.total} instaladas · tramo ${T.filter(x=>x<=d.total).length}/${T.length}${df}</summary><table>${[...d.advisors].sort((x,y)=>y.n-x.n).map(x=>`<tr><td>${e(x.name)}</td><td>${x.n}</td></tr>`).join('')}</table></details>`}).join('')}`}}
 function prev(){S.txt=$('#tx').value;const m={};$('#tx').value.split('\n').forEach(l=>{l=l.replace(/[^\x20-\x7E\u00C0-\u017F\t]/g,'').trim();const x=l.match(/^(.*?)[\t ,;]+(\d+)\s*$/);if(!x)return;const nm=x[1].replace(/\s+/g,' ').trim().toUpperCase();if(!nm||nm=='LAZO')return;m[nm]=(m[nm]||0)+ +x[2]});S.P=m;sup()}
 async function savePaste(){const rows=S.adv.filter(a=>a.active).map(a=>({month:MO,advisor_id:a.id,n:S.P[a.name.toUpperCase()]||0,updated_at:new Date().toISOString()}));
+ const dr=S.adv.filter(a=>a.active&&(S.ins[a.id]?.n||0)>(S.P[a.name.toUpperCase()]||0)).map(a=>a.name+' ('+S.ins[a.id].n+' → '+(S.P[a.name.toUpperCase()]||0)+')');if(dr.length&&!confirm('Estos asesores BAJARÍAN:\n'+dr.join('\n')+'\n¿Guardar igual?'))return;
  const{error}=await sb.from('installs').upsert(rows);S.msg=error?error.message:'✔ Avance guardado';if(!error){S.P=null;await load()}sup()}
 async function addAdv(n){n=(n||'').trim().toUpperCase().replace(/\s+/g,' ');if(!n)return;const{error}=await sb.from('advisors').insert({name:n});S.msg=error?error.message:'';await load();sup()}
 async function upd(id,o){await sb.from('advisors').update(o).eq('id',id);await load();sup()}
+function newCode(id){if(confirm('El link anterior dejará de funcionar. ¿Generar uno nuevo?')){const c=[...crypto.getRandomValues(new Uint8Array(6))].map(b=>b.toString(16).padStart(2,'0')).join('');upd(id,{code:c})}}
 async function delAdv(id){if(confirm('¿Quitar este asesor y su avance?')){await sb.from('advisors').delete().eq('id',id);await load();sup()}}
 async function saveMetas(){const tt=parseT($('#tt').value);await sb.from('settings').upsert({month:MO,team_tiers:tt});
  const rows=S.prof.map(p=>({month:MO,name:p.name,tiers:parseT($('[id="pf_'+p.name+'"]').value)}));const nn=$('#pn').value.trim().toUpperCase(),nt=parseT($('#pt').value);if(nn&&nt.length)rows.push({month:MO,name:nn,tiers:nt});
@@ -118,9 +123,10 @@ async function copyPrev(){const d=new Date(now.getFullYear(),now.getMonth()-1,1)
  if(p?.length)await sb.from('profiles').upsert(p.map(x=>({...x,month:MO})));if(s?.length)await sb.from('settings').upsert({month:MO,team_tiers:s[0].team_tiers});
  S.msg='✔ Metas copiadas. Ajusta lo que cambie.';await load();sup()}
 async function closeMonth(){if(!confirm('¿Cerrar '+MO+'?'))return;const n=tot(),data={team_tiers:S.team,total:n,advisors:S.adv.filter(a=>a.active).map(a=>({name:a.name,n:S.ins[a.id]?.n||0,tiers:tiersOf(a)}))};
- const{error}=await sb.from('closes').upsert({month:MO,data});S.msg=error?error.message:'✔ Mes cerrado y guardado en el histórico'; sup()}
+ const{error}=await sb.from('closes').upsert({month:MO,data});S.msg=error?error.message:'✔ Mes cerrado y guardado en el histórico';await load();sup()}
 
 /* ---------- INICIO ---------- */
+let hid=0;document.addEventListener('visibilitychange',()=>{if(document.hidden)hid=Date.now();else if(hid&&Date.now()-hid>300000)location.reload()});
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 (async()=>{const q=new URLSearchParams(location.search).get('a')||localStorage.getItem('jm_code');
  const{data:{session}}=await sb.auth.getSession();
