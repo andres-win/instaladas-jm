@@ -94,7 +94,7 @@ function tabHtml(c){
   pv=`<table>${S.adv.filter(a=>a.active).map(a=>`<tr><td>${e(a.name)}</td><td>${P[a.name.toUpperCase()]??0}</td></tr>`).join('')}</table>
   ${unk.length?`<p class="err">⚠ Nombres desconocidos (NO se suman):</p>${unk.map(k=>`<div class="row"><span>${e(k)}: ${P[k]}</span><button class="s g" onclick="addAdv('${e(k).replace(/'/g,'')}')">Agregar como asesor</button></div>`).join('')}`:'<p>✔ Todos los nombres son reconocidos.</p>'}
   <button onclick="savePaste()">Guardar avance</button>`}
-  return`<b>Pega el reporte (ASESOR e INSTALADAS acumuladas del mes)</b><textarea id="tx" placeholder="NOMBRE&#9;INSTALADAS"></textarea><button class="g" onclick="prev()">Vista previa</button>${pv}`}
+  return`<b>Pega el reporte (ASESOR e INSTALADAS acumuladas del mes)</b><textarea id="tx" placeholder="NOMBRE&#9;INSTALADAS">${e(S.txt||'')}</textarea><button class="g" onclick="prev()">Vista previa</button>${pv}`}
  if(S.tab=='met')return`<b>Meta del equipo (3 tramos)</b><input id="tt" value="${S.team.join(', ')}" placeholder="140, 160, 180">
  <b style="display:block;margin-top:14px">Perfiles de asesor (2 o 3 tramos)</b>${S.prof.map(p=>`<div class="row"><input value="${e(p.name)}" disabled><input id="pf_${e(p.name)}" value="${p.tiers.join(', ')}"></div>`).join('')}
  <div class="row"><input id="pn" placeholder="Nuevo perfil (ej. FULL TIME)"><input id="pt" placeholder="80, 91"></div>
@@ -104,10 +104,10 @@ function tabHtml(c){
  <div class="row"><label><input type="checkbox" style="width:auto" ${a.active?'checked':''} onchange="upd('${a.id}',{active:this.checked})"> Activo</label><button class="s g" onclick="navigator.clipboard.writeText(location.origin+location.pathname+'?a=${a.code}');this.textContent='¡Link copiado!'">Copiar link</button><button class="s g" onclick="delAdv('${a.id}')">Quitar</button></div></div>`).join('')}
  <div class="row"><input id="na" placeholder="Nuevo asesor (nombre como viene en el reporte)"><button class="s" onclick="addAdv($('#na').value)">Agregar</button></div>`;
  if(S.tab=='cie')return`<p>Guarda el resumen final de <b>${MO}</b> en el histórico. El mes siguiente empieza en cero automáticamente.</p><button onclick="closeMonth()">Cerrar mes ${MO}</button>`}
-function prev(){const m={};$('#tx').value.split('\n').forEach(l=>{l=l.replace(/[^\x20-\x7E\u00C0-\u017F\t]/g,'').trim();const x=l.match(/^(.*?)[\t ,;]+(\d+)\s*$/);if(!x)return;const nm=x[1].replace(/\s+/g,' ').trim().toUpperCase();if(!nm||nm=='LAZO')return;m[nm]=(m[nm]||0)+ +x[2]});S.P=m;sup()}
+function prev(){S.txt=$('#tx').value;const m={};$('#tx').value.split('\n').forEach(l=>{l=l.replace(/[^\x20-\x7E\u00C0-\u017F\t]/g,'').trim();const x=l.match(/^(.*?)[\t ,;]+(\d+)\s*$/);if(!x)return;const nm=x[1].replace(/\s+/g,' ').trim().toUpperCase();if(!nm||nm=='LAZO')return;m[nm]=(m[nm]||0)+ +x[2]});S.P=m;sup()}
 async function savePaste(){const rows=S.adv.filter(a=>a.active).map(a=>({month:MO,advisor_id:a.id,n:S.P[a.name.toUpperCase()]||0,updated_at:new Date().toISOString()}));
  const{error}=await sb.from('installs').upsert(rows);S.msg=error?error.message:'✔ Avance guardado';if(!error){S.P=null;await load()}sup()}
-async function addAdv(n){n=(n||'').trim().toUpperCase().replace(/\s+/g,' ');if(!n)return;const{error}=await sb.from('advisors').insert({name:n});S.msg=error?error.message:'';await load();if(S.tab=='peg')prev();else sup()}
+async function addAdv(n){n=(n||'').trim().toUpperCase().replace(/\s+/g,' ');if(!n)return;const{error}=await sb.from('advisors').insert({name:n});S.msg=error?error.message:'';await load();sup()}
 async function upd(id,o){await sb.from('advisors').update(o).eq('id',id);await load();sup()}
 async function delAdv(id){if(confirm('¿Quitar este asesor y su avance?')){await sb.from('advisors').delete().eq('id',id);await load();sup()}}
 async function saveMetas(){const tt=parseT($('#tt').value);await sb.from('settings').upsert({month:MO,team_tiers:tt});
