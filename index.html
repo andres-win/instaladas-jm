@@ -43,18 +43,25 @@ const MO=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
 const tc=s=>String(s).toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
 const parseT=s=>String(s).split(/[ ,\-]+/).map(Number).filter(Boolean).sort((a,b)=>a-b);
 const hi=()=>{const h=now.getHours();return h<12?'BUENOS DÍAS':h<19?'BUENAS TARDES':'BUENAS NOCHES'};
-const pick=a=>a[now.getDate()%a.length];
+const PC={};
+function pick(k,a){if(PC[k]!=null)return a[PC[k]];let u=[];try{u=JSON.parse(localStorage.getItem('jm_u_'+k)||'[]')}catch(x){}
+ let f=a.map((_,i)=>i).filter(i=>!u.includes(i));if(!f.length){const l=u[u.length-1];u=[];f=a.map((_,i)=>i).filter(i=>i!=l)}
+ const i=f[Math.floor(Math.random()*f.length)];u.push(i);try{localStorage.setItem('jm_u_'+k,JSON.stringify(u))}catch(x){}PC[k]=i;return a[i]}
 function calc(n,t){const Y=now.getFullYear(),M=now.getMonth(),last=new Date(Y,M+1,0).getDate(),d=now.getDate(),
  w=(a,b)=>{let c=0;for(let i=a;i<=b;i++)if(new Date(Y,M,i).getDay())c++;return c};
  const tot=w(1,last),el=w(1,d),rem=w(d+1,last),nx=t.find(x=>x>n),pend=nx?nx-n:0;
  return{nx,pend,perDay:nx?pend/(rem||1):0,proj:el?Math.round(n/el*tot):0,idx:t.filter(x=>x<=n).length,rem}}
-function phrase(n,t,c){const L=t.length;if(L&&c.idx==L)return pick(['¡Superaste todos tus tramos! Eres imparable 🔥','¡Meta máxima lograda! Qué orgullo verte brillar 🏆']);
- if(c.idx>0)return pick(['¡Tramo '+c.idx+' conquistado! Vamos por el siguiente 💪','¡Qué crack! Ya tienes el tramo '+c.idx+', sigue así 🚀']);
- const p=c.nx?n/c.nx:0;
- if(p>=.7)return pick(['¡Ya casi llegas! Un empujón más y lo logras 🚀','¡Se huele el tramo! Tú puedes 🔥']);
- if(p>=.4)return pick(['¡Vas increíble, sigue sumando! 🙌','¡Buen ritmo! Cada instalada te acerca 💫']);
- if(n>0)return pick(['¡Buen arranque! Cada instalada cuenta ⭐','¡Vamos con todo, lo mejor está por venir! 🌟']);
- return pick(['¡Hoy es un gran día para tu primera instalada! 💥','¡Con ganas y actitud todo se logra! ☀️'])}
+const PH={
+max:['¡Superaste todos los tramos! Eres imparable 🔥','¡Meta máxima lograda! Qué orgullo verte brillar 🏆','¡Lo diste todo y se nota! Eres un ejemplo 🌟','¡Tope alcanzado! Hoy se celebra a lo grande 🎉','¡Increíble! Rompiste todas las metas del mes 🚀','¡Esto es de campeones! Sigue disfrutando tu logro 🥇','¡Nivel máximo desbloqueado! Felicitaciones 👏'],
+tr:['¡Tramo {t} conquistado! Vamos por el siguiente 💪','¡Qué crack! Ya tienes el tramo {t}, sigue así 🚀','¡Lo lograste! Tramo {t} en el bolsillo 🎯','¡Bravo! El tramo {t} ya es tuyo, a por más 🔥','¡Gran trabajo! Tramo {t} listo y con ganas de más ⭐','¡Así se hace! Tramo {t} superado con actitud 🙌','¡Imparable! Tramo {t} logrado, el siguiente te espera 🏁'],
+hi:['¡Ya casi llegas! Un empujón más y lo logras 🚀','¡Se huele el tramo! Tú puedes 🔥','¡Estás a un paso! Todo tu esfuerzo está valiendo la pena 💫','¡La meta ya se ve! No pares ahora 🏃','¡Qué cerquita! Una más y otra más, vamos 💪','¡Excelente ritmo! El tramo está al alcance 🎯','¡Casi, casi! Hoy puede ser el día 🌟'],
+mid:['¡Vas increíble, sigue sumando! 🙌','¡Buen ritmo! Cada instalada te acerca 💫','¡Vas por muy buen camino, no bajes el ánimo! 🚀','¡Constancia que da resultados! Sigue así 💪','¡Mitad de camino y con mucha energía! ⚡','¡Se nota tu esfuerzo! Vamos por más 🔥','¡Muy bien! Cada día estás más cerca 🎯'],
+lo:['¡Buen arranque! Cada instalada cuenta ⭐','¡Vamos con todo, lo mejor está por venir! 🌟','¡Ya empezaste a sumar! El impulso es tuyo 🚀','¡Pasito a pasito se llega lejos! 💪','¡Qué bien se ve ese avance! Sigue con ganas 🙌','¡Con actitud todo se logra! Vamos por la siguiente ☀️','¡Buen comienzo! Hoy puedes sumar otra 🔥'],
+zero:['¡Hoy es un gran día para tu primera instalada! 💥','¡Con ganas y actitud todo se logra! ☀️','¡Un día nuevo, una oportunidad nueva! Vamos 🚀','¡Tú puedes con esto y más! A sumar 💪','¡Empieza con energía, la primera ya viene! 🌟','¡Hoy se escribe una buena historia! Vamos con todo 🔥','¡Respira, sonríe y a por la primera! 😄']};
+function phrase(n,t,c){const L=t.length,p=c.nx?n/c.nx:0;
+ if(L&&c.idx==L)return pick('max',PH.max);
+ if(c.idx>0)return pick('tr'+c.idx,PH.tr).replace(/\{t\}/g,c.idx);
+ if(p>=.7)return pick('hi',PH.hi);if(p>=.4)return pick('mid',PH.mid);if(n>0)return pick('lo',PH.lo);return pick('zero',PH.zero)}
 function ladder(n,t){const mx=Math.max(...t,n,1);return`<div class="ladder"><div class="fill" style="width:${Math.min(100,n/mx*100)}%"></div>${t.map(x=>`<span class="tk ${n>=x?'ok':''}" style="left:calc(${x/mx*100}% - 1px)"><b>${x}</b></span>`).join('')}</div>`}
 const stat=(l,v)=>`<div><small>${l}</small><strong>${v}</strong></div>`;
 
@@ -67,8 +74,8 @@ async function goAdv(c){c=(c||'').trim();const mm=c.match(/[?&]a=([A-Za-z0-9]+)/
  const{data}=await sb.rpc('advisor_view',{p_code:c});
  if(!data){localStorage.removeItem('jm_code');return login('Código no válido. Revísalo con tu supervisor.')}
  localStorage.setItem('jm_code',c);advView(data)}
-function advView(d){const t=d.tiers||[],n=d.n,c=calc(n,t),up=d.updated?new Date(d.updated).toLocaleDateString('es-PE',{day:'numeric',month:'short'}):'—';
- A.innerHTML=`<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>${hi()}, ${e(tc(d.name.split(' ')[0]))}</h1><p>${phrase(n,t,c)}</p>
+function advView(d){ADV=1;const t=d.tiers||[],n=d.n,c=calc(n,t),up=d.updated?new Date(d.updated).toLocaleDateString('es-PE',{day:'numeric',month:'short'}):'—';
+ A.innerHTML=`<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>${hi()}, ${e(d.name.split(' ')[0].toUpperCase())}</h1><p>${phrase(n,t,c)}</p>
  <div style="margin-top:18px"><span class="big">${n}</span> instaladas</div>${t.length?ladder(n,t):''}</div>
  <div class="st">${c.nx?stat('Te faltan para tu siguiente tramo ('+c.nx+')',c.pend)+stat('Ritmo ideal por día hábil',c.perDay.toFixed(1)):stat('Estado',t.length?'¡Meta máxima!':'Sin metas aún')}${stat('Proyección a fin de mes',c.proj)}${stat('Días hábiles que quedan',c.rem)}</div>
  <p style="color:var(--mu);font-size:13px">Actualizado: ${up}</p><button class="g" onclick="localStorage.removeItem('jm_code');login()">Salir</button>`}
@@ -78,7 +85,7 @@ const S={tab:'res',adv:[],prof:[],team:[],ins:{},P:null,msg:''};
 const tiersOf=a=>a.custom_tiers?.length?a.custom_tiers:(S.prof.find(p=>p.name==a.profile)||{}).tiers||[];
 async function goSup(){const{error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
  if(error)return $('#m').textContent='Usuario o contraseña incorrectos.';supInit()}
-async function supInit(){const{data:{user}}=await sb.auth.getUser();S.name=tc((user.user_metadata?.name||user.email.split('@')[0]).split(/[ ._]/)[0]);await load();sup()}
+async function supInit(){ADV=0;const{data:{user}}=await sb.auth.getUser();S.name=(user.user_metadata?.name||user.email.split('@')[0]).split(/[ ._]/)[0].toUpperCase();await load();sup()}
 async function load(){const[a,p,s,i,cl]=await Promise.all([sb.from('advisors').select('*').order('name'),sb.from('profiles').select('*').eq('month',MO),sb.from('settings').select('*').eq('month',MO),sb.from('installs').select('*').eq('month',MO),sb.from('closes').select('*').order('month',{ascending:false})]);
  S.cl=cl.data||[];S.adv=a.data||[];S.prof=p.data||[];S.team=(s.data?.[0]||{}).team_tiers||[];S.ins=Object.fromEntries((i.data||[]).map(r=>[r.advisor_id,r]))}
 const tot=()=>S.adv.filter(a=>a.active).reduce((s,a)=>s+(S.ins[a.id]?.n||0),0);
@@ -126,7 +133,7 @@ async function closeMonth(){if(!confirm('¿Cerrar '+MO+'?'))return;const n=tot()
  const{error}=await sb.from('closes').upsert({month:MO,data});S.msg=error?error.message:'✔ Mes cerrado y guardado en el histórico';await load();sup()}
 
 /* ---------- INICIO ---------- */
-let hid=0;document.addEventListener('visibilitychange',()=>{if(document.hidden)hid=Date.now();else if(hid&&Date.now()-hid>300000)location.reload()});
+let hid=0,ADV=0;document.addEventListener('visibilitychange',()=>{if(document.hidden)hid=Date.now();else if(hid&&Date.now()-hid>(ADV?30000:300000))location.reload()});
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 (async()=>{const q=new URLSearchParams(location.search).get('a')||localStorage.getItem('jm_code');
  const{data:{session}}=await sb.auth.getSession();
