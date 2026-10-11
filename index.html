@@ -51,6 +51,26 @@ table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:8px 6px;t
 .bk{display:flex;align-items:center;gap:8px;margin:8px 0}.bk b{width:112px;font-size:12px}.bk i{flex:1;height:14px;border-radius:7px;background:#8a93b333;overflow:hidden}.bk s{display:block;height:100%;border-radius:7px}.bk em{width:76px;text-align:right;font-style:normal;font-size:24px;font-weight:800}
 .tk u{position:absolute;top:36px;left:-24px;width:48px;text-align:center;font-size:11px;font-style:normal;text-decoration:none;color:var(--mu)}
 .rm{display:flex;align-items:center;margin-top:8px;font-size:14px}
+
+/* ---- Estilo v2: claro y oscuro ---- */
+:root{--bg:#EEF1FA;--card:#FFFFFF;--card2:#F2F4FB;--line:#DCE2F2;--tx:#0E1B3D;--mu:#55618A;--mint:#17A589;--gold:#E8A200;--coral:#E5484D;--tick:rgba(14,27,61,.45);--shadow:0 1px 2px rgba(14,27,61,.06),0 8px 22px rgba(14,27,61,.08)}
+@media(prefers-color-scheme:dark){:root{--bg:#070D24;--card:#16254F;--card2:#1E3070;--line:#2B3D7A;--tx:#F3F5FF;--mu:#B3BEE0;--mint:#2FD6AE;--gold:#FFC93C;--coral:#FF6B6B;--tick:rgba(255,255,255,.55);--shadow:none}}
+body{background:var(--bg);color:var(--tx);font-size:15px}
+.card,.st div{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+.card .card,.card .st div{background:var(--card2);box-shadow:none}
+.hero,.tot{background:linear-gradient(135deg,#0E1B3D,#1B2F6B);color:#fff;border:0;box-shadow:var(--shadow)}
+.pane{overflow-x:auto}
+button{min-height:42px;transition:transform .12s}button:active{transform:scale(.97)}button.s{min-height:34px}
+button.g{background:var(--card2);color:var(--tx);border:1px solid var(--line)}
+input,select,textarea{background:var(--card);border:1.5px solid var(--line);color:var(--tx)}
+.tabs button{background:var(--card);color:var(--tx);border:1px solid var(--line)}
+.tabs .on{background:#FF7A1A;color:#0E1B3D;border-color:#FF7A1A}
+.chip{background:var(--card2);color:var(--tx);border:1px solid var(--line)}.chip.ok{background:var(--mint);color:#fff;border-color:var(--mint)}
+.r2,small{font-size:13px}.r2{color:var(--mu)}
+.ladder{background:rgba(138,147,177,.28)}.fill{background:linear-gradient(90deg,#FF7A1A,#FFC93C);animation:grow .9s ease-out}
+@keyframes grow{from{width:0}}@media(prefers-reduced-motion:reduce){.fill{animation:none}}
+.tk{background:var(--tick)}.tk b{color:var(--tx)}.tk.ok{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+.hero .tk,.tot .tk{background:rgba(255,255,255,.7)}.hero .tk.ok,.tot .tk.ok{background:#FFC93C}.hero .tk b,.tot .tk b{color:#fff}
 </style></head><body><div class="w" id="app"></div>
 <script>
 const APP="INSTALADAS JM", URL_="https://htnkfocyfgbrmhgcdwps.supabase.co", KEY="sb_publishable_CwARyGn0j0qRNjDKSdC31Q_hxpAuDNx";
@@ -163,7 +183,7 @@ function attBanner(){const d=fmt(now),n=S.adv.filter(a=>a.active&&!S.att.some(r=
 async function loadAtt(){loadStaff();const c=CODE();if(!c)return;const{data}=await sb.rpc('advisor_att',{p_code:c}),el=$('#att');if(!el||!data)return;const k=Object.keys(AST).filter(x=>data[x]);el.innerHTML=k.length?'<div class="card"><div class="row"><b>Mi asistencia</b><small style="flex:none;color:var(--mu)">Este mes</small></div><div style="font-size:14px;margin-top:4px">'+k.map(x=>AST[x]+': <b>'+data[x]+'</b>').join(' · ')+'</div></div>':''}
 function admBonus(c,{tw,tm,tiers,r,wr,eff}){const wl=wr||[],T=tiers||[],ma=(r&&r.monthly)||[],k=T.filter(x=>x<=tm).length,row=(eff||[]).find(x=>String(x.k).toUpperCase()=='INSTALADA'),ep=c=='BACK OFFICE'&&row?row.p:null;
  return{T,el:(r&&r.eff)||[],cp:r?r.comm:0,wl,ma,k,wb:bonusOf(wl,tw),wn:wl.find(l=>l.n>tw),mb:k?ma[k-1]||0:0,mn:T[k],cm:Math.round((r?r.comm:0)*tm*100)/100,ep,eb:ep==null?0:bonusOf((r&&r.eff)||[],ep)}}
-const ECOL={INSTALADA:'#1FB59A',REPROGRAMADA:'#FFC93C',PROGRAMADA:'#5B8DEF','EN PROGRESO':'#A78BFA'},ec=k=>ECOL[String(k).toUpperCase()]||'#FF6B57';
+const ECOL={INSTALADA:'#1FB59A',GRABADO:'#8FA3C9',REPROGRAMADA:'#FFC93C',PROGRAMADA:'#5B8DEF','EN PROGRESO':'#A78BFA'},ec=k=>ECOL[String(k).toUpperCase()]||'#FF6B57';
 const semL=ws=>{const w=ws||wsOf(now),f=d=>d.toLocaleDateString('es-PE',{day:'numeric',month:'short'});return f(w)+' al '+f(addD(w,6))};
 function effBar(p,L){const v=L.map(l=>l.n),lo=Math.max(0,Math.min(p,...v)-8),hi=Math.max(p,...v)+5,pos=x=>(x-lo)/(hi-lo)*100;
  return`<div class="ladder" style="margin:36px 0 40px"><div class="fill" style="width:${Math.min(100,pos(p))}%"></div>${L.map(l=>`<span class="tk ${p>=l.n?'ok':''}" style="left:calc(${pos(l.n)}% - 1px)"><b>${l.n}%</b><u>S/ ${l.amt}</u></span>`).join('')}</div>`}
@@ -218,7 +238,7 @@ function sup(){const T=S.team,n=tot(),c=calc(n,T),tabs=[['res','Resumen'],['peg'
  A.innerHTML=`<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>${hi()}, ${e(S.name)}</h1><p>${phrase(n,T,c)}</p>
  </div>
  ${closeBanner()}<div class="tabs">${tabs.filter(t=>S.role=='sup'?t[0]!='per':['res','asi','bon','per'].includes(t[0])).map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';S.msg='';sup()">${l}</button>`).join('')}</div>
- <div class="card">${tabHtml(c)}<p class="err">${S.msg}</p></div><button class="g" style="margin-top:14px" onclick="supOut()">Salir</button>`}
+ <div class="${S.tab=='res'?'pane':'card'}">${tabHtml(c)}<p class="err">${S.msg}</p></div><button class="g" style="margin-top:14px" onclick="supOut()">Salir</button>`}
 function tabHtml(c){
  if(S.tab=='res'){const T=S.team,n=tot(),c=calc(n,T),w=wsOf(now),tw=ases().reduce((s,a)=>s+wkN(a.id,w),0),hoy=ases().reduce((s,a)=>s+incN(a.id,fmt(now),fmt(now)),0),pr=c.proj,
  rk=ases().map(a=>({a,n:S.ins[a.id]?.n||0,t:tiersOf(a)})).sort((x,y)=>y.n-x.n||x.a.name.localeCompare(y.a.name)),mx=Math.max(...rk.map(x=>x.n),1),as={};
