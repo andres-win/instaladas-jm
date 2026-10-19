@@ -102,7 +102,7 @@ const stat=(l,v)=>`<div><small>${l}</small><strong>${v}</strong></div>`;
 /* ---------- LOGIN ---------- */
 function login(m=''){A.innerHTML=`<div class="hero"><div class="logo l"><img src="logo.png" alt="Grupo JM Call Center"></div><h1>${APP}</h1><p>¡Bienvenido! Aquí empieza tu mejor mes 🚀</p></div>
 <div class="card"><b>Soy asesor</b><input id="cd" placeholder="Tu código o tu link" autocomplete="off"><button onclick="goAdv($('#cd').value)">Entrar</button></div>
-<div class="card"><b>Soy supervisor</b><input id="em" type="email" placeholder="Correo de usuario" autocomplete="username" value="${e(localStorage.jm_u||'')}"><input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password" value="${e(localStorage.jm_p?decodeURIComponent(atob(localStorage.jm_p)):'')}"><label class="rm"><input type="checkbox" id="rm" style="width:auto;margin:0 8px 0 0" ${localStorage.jm_u?'checked':''}>Recordar usuario y contraseña</label><button onclick="goSup()">Entrar</button></div>
+<div class="card"><b>Soy supervisor</b><input id="em" type="email" placeholder="Correo de usuario" autocomplete="username" value="${e(localStorage.jm_u||'')}"><input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password"><label class="rm"><input type="checkbox" id="rm" style="width:auto;margin:0 8px 0 0" ${localStorage.jm_u?'checked':''}>Recordar usuario y contraseña</label><button onclick="goSup()">Entrar</button></div>
 <p class="err" id="m">${m}</p>`}
 async function goAdv(c){c=(c||'').trim();const mm=c.match(/[?&]a=([A-Za-z0-9]+)/);if(mm)c=mm[1];c=c.toLowerCase();if(!c)return;
  const{data}=await sb.rpc('advisor_view',{p_code:c});CG=(await sb.rpc('advisor_cargo',{p_code:c})).data||'ASESOR';
@@ -373,3 +373,13 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').then(r=
  const{data:{session}}=await sb.auth.getSession();
  if(session)return supInit();if(q)return goAdv(q);if(localStorage.jm_auto=='1'&&localStorage.jm_u&&localStorage.jm_p){const{error}=await sb.auth.signInWithPassword({email:localStorage.jm_u,password:decodeURIComponent(atob(localStorage.jm_p))});if(!error)return supInit()}login()})();
 </script></body></html>
+
+<script>
+try{localStorage.removeItem('jm_p');localStorage.removeItem('jm_auto')}catch(x){}
+(function(){
+ var _g=goSup;
+ goSup=async function(){await _g();try{localStorage.removeItem('jm_p');localStorage.removeItem('jm_auto')}catch(x){}};
+ var _l=login;
+ login=function(m){_l(m);document.querySelectorAll('label.rm').forEach(function(l){if(l.lastChild)l.lastChild.textContent='Recordar mi usuario'})};
+})();
+</script>
