@@ -115,3 +115,74 @@ AS $function$
  where v.month=m.mo and (a.cargo in ('BACK OFFICE','SUPERVISOR','JEFE') or v.advisor_id=a.id) $function$;
 
 -- Faltan por guardar: day_n, week_n, rl, me_role, att_trg, audit_trg, las políticas RLS y los triggers.
+
+-- ================= FUNCIONES DE APOYO =================
+-- (La nota de arriba "Faltan por guardar" ya solo aplica a las políticas RLS y los triggers)
+
+CREATE OR REPLACE FUNCTION public.att_trg()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare d date; a uuid;
+begin
+ d := coalesce(new.day, old.day); a := coalesce(new.advisor_id, old.advisor_id);
+ if exists(select 1 from attendance_closed where month=to_char(d,'YYYY-MM')) and coalesce(me_role(),'')<>'sup' then
+  raise exception 'Mes cerrado';
+ end if;
+ if tg_op='UPDATE' and old.st=new.st then return new; end if;
+ insert into attendance_log(by_email,day,advisor_id,old_st,new_st)
+  values (lower(auth.jwt()->>'email'), d, a, case when tg_op='INSERT' then null else old.st end, case when tg_op='DELETE' then null else new.st end);
+ return coalesce(new, old);
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.audit_trg()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+ insert into audit_log(by_email,tabla,accion,detalle)
+ values (lower(coalesce(auth.jwt()->>'email','')), tg_table_name, tg_op, case when tg_op='DELETE' then to_jsonb(old) else to_jsonb(new) end);
+ return coalesce(new, old);
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.day_n(p_adv uuid, p_day date)
+ RETURNS integer
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+ select case when t.n is null then 0 else greatest(t.n - coalesce(p.n, case when t.day=(select min(day) from reports where advisor_id=p_adv) then t.n else 0 end),0) end
+ from (select 1) x
+ left join (select day,n from reports where advisor_id=p_adv and day=p_day) t on true
+ left join lateral (select r.n from reports r where r.advisor_id=p_adv and r.day<p_day and date_trunc('month',r.day)=date_trunc('month',p_day) order by r.day desc limit 1) p on true $function$;
+
+CREATE OR REPLACE FUNCTION public.me_role()
+ RETURNS text
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+ select role from public.staff where email=lower(auth.jwt()->>'email') $function$;
+
+CREATE OR REPLACE FUNCTION public.rl(pf text, mo text)
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE
+AS $function$
+ select levels from bonus_rules where profile=pf and month<=mo order by month desc limit 1 $function$;
+
+CREATE OR REPLACE FUNCTION public.week_n(p_adv uuid, p_start date)
+ RETURNS integer
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+ select coalesce(sum(inc),0)::int from (
+  select day, n - coalesce(lag(n) over (partition by date_trunc('month',day) order by day),
+     case when day=(select min(r2.day) from reports r2 where r2.advisor_id=p_adv) then n else 0 end) as inc
+  from reports where advisor_id=p_adv and day >= date_trunc('month',p_start)::date and day <= p_start+6
+ ) t where day between p_start and p_start+6 $function$;
