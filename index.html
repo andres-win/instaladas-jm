@@ -487,3 +487,139 @@ try{localStorage.removeItem('jm_p');localStorage.removeItem('jm_auto')}catch(x){
  window.anaRefresh=function(){ANA.rows=null;refreshSup(1)};
 }catch(x){console.error('mejoras',x)}})();
 </script>
+<script>
+/* ===== MEJORAS 2: pendientes, seguimiento, ausentismo y comparación ===== */
+(function(){try{
+ var LIM_F=2,LIM_T=3;
+ var FW={list:[]};
+ var ST=['PENDIENTE','CONTACTADA','RECUPERADA','PERDIDA'];
+ var fkey=function(x){return x.advisor_id+'|'+String(x.client||'').toUpperCase().replace(/\s+/g,' ').trim()};
+ var fwm=function(){return S.fw||(S.fw={})};
+ var isCur=function(x){return String(x.slot||'').slice(-1)!=='*'};
+ var byDay=function(x,y){return x.day<y.day?1:x.day>y.day?-1:0};
+ var ddmm=function(d){return d.slice(8,10)+'/'+d.slice(5,7)};
+
+ var loadOrig=load;
+ load=async function(){
+  await loadOrig.apply(this,arguments);
+  try{var r=await sb.from('follow').select('*');S.fw={};(r.data||[]).forEach(function(x){S.fw[x.k]=x})}catch(x){S.fw={}}
+ };
+
+ var aus=function(){var o=[];
+  todos().forEach(function(a){
+   if(a.cargo=='JEFE')return;
+   var f=0,t=0;
+   (S.att||[]).forEach(function(r){if(r.advisor_id==a.id){if(r.st=='F')f++;if(r.st=='T')t++}});
+   if(f>=LIM_F||t>=LIM_T)o.push({a:a,f:f,t:t});
+  });
+  return o.sort(function(x,y){return (y.f*2+y.t)-(x.f*2+x.t)});
+ };
+
+ var cmp=function(){
+  var d0=new Date(now.getFullYear(),now.getMonth()-1,1),
+      pm=d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0'),
+      last=new Date(now.getFullYear(),now.getMonth(),0).getDate(),
+      td=pm+'-'+String(Math.min(now.getDate(),last)).padStart(2,'0'),
+      best={},suma=0,cnt=0;
+  (S.rep||[]).forEach(function(r){
+   if(r.day.slice(0,7)==pm&&r.day<=td){var b=best[r.advisor_id];if(!b||r.day>b.day)best[r.advisor_id]=r}
+  });
+  ases().forEach(function(a){if(best[a.id]){suma+=best[a.id].n;cnt++}});
+  return cnt?{prev:suma,cur:tot()}:null;
+ };
+
+ var panel=function(){
+  var it=[],hoy=fmt(now),dow=now.getDay(),att=S.att||[],sg=S.sg||[],fw=fwm();
+  if(dow){
+   var sin=todos().filter(function(a){return a.cargo!='JEFE'&&!att.some(function(r){return r.day==hoy&&r.advisor_id==a.id})}).length;
+   if(sin)it.push({t:sin+' persona(s) sin asistencia marcada hoy',go:'asi',b:'Marcar'});
+  }
+  var pend=sg.filter(function(x){return x.kind=='canc'&&isCur(x)&&(!fw[fkey(x)]||fw[fkey(x)].state=='PENDIENTE')}).length;
+  if(pend)it.push({t:pend+' venta(s) cancelada(s) sin seguimiento',go:'age',b:'Ver'});
+  var venc=sg.filter(function(x){return x.kind=='prog'&&x.day<hoy}).length;
+  if(venc)it.push({t:venc+' instalación(es) programada(s) con fecha vencida',go:'age',b:'Ver'});
+  if(S.role=='sup'){
+   var sp=ases().filter(function(a){return !a.profile}).length;
+   if(sp)it.push({t:sp+' asesor(a)(s) sin perfil de meta',go:'ase',b:'Asignar'});
+   var sr=['SUPERVISOR','BACK OFFICE'].filter(function(cg){
+    return todos().some(function(a){return a.cargo==cg})&&!(S.ar||[]).some(function(x){return x.cargo==cg&&x.month==MO&&((x.weekly||[]).length||(x.monthly||[]).length||x.comm>0)});
+   });
+   if(sr.length)it.push({t:'Faltan reglas de bono: '+sr.join(', '),go:'met',b:'Metas'});
+  }
+  var sy=S.sync;
+  if(sy&&(Date.now()-new Date(sy.at))/60000>120)it.push({t:'La sincronización con tu hoja no se actualiza hace más de 2 horas',go:'res',b:''});
+  if(dow==6)it.push({t:'Es sábado: revisa los bonos de la semana',go:'bon',b:'Bonos'});
+  var T=S.team||[],n=tot();
+  if(T.length&&now.getDate()>=10){
+   var c=calc(n,T),k=T.filter(function(x){return x<=c.proj}).length;
+   if(k<T.length&&c.rem>0){
+    var tg=T[k],ex=Math.max(1,Math.ceil((tg-n)/c.rem));
+    it.push({t:'Al ritmo actual cierran con '+c.proj+' y no llegan al tramo '+(k+1)+' ('+tg+'). Necesitan ~'+ex+' instaladas por día desde hoy',go:'eje',b:''});
+   }
+  }
+  var au=aus();
+  if(au.length)it.push({t:au.length+' persona(s) con faltas o tardanzas acumuladas',go:'ana',b:'Ver'});
+  var c2=cmp(),cl='';
+  if(c2){var df=c2.cur-c2.prev;cl='<div class="r2" style="margin-top:8px">📊 Frente al mes pasado a esta misma fecha: <b>'+(df>=0?'+':'')+df+'</b> ('+c2.cur+' vs '+c2.prev+')</div>'}
+  return '<div class="card" style="margin:0 0 8px;border-left:4px solid '+(it.length?'var(--sun)':'var(--mint)')+'"><b>'+(it.length?'📌 Hoy tienes pendiente':'✅ Todo al día')+'</b>'+
+   it.map(function(x){return '<div class="row" style="margin-top:6px"><small style="flex:2;color:var(--tx)">'+e(x.t)+'</small>'+(x.b?'<button class="s" style="flex:none" onclick="S.tab=\''+x.go+'\';S.msg=\'\';sup()">'+x.b+'</button>':'')+'</div>'}).join('')+cl+'</div>';
+ };
+
+ var agendaHtml=function(){
+  var hoy=fmt(now),nm={};
+  S.adv.forEach(function(a){nm[a.id]=a.name});
+  var C=(S.sg||[]).filter(function(x){return x.kind=='canc'&&isCur(x)}).sort(byDay).slice(0,40);
+  FW.list=C;
+  var cnt={PENDIENTE:0,CONTACTADA:0,RECUPERADA:0,PERDIDA:0};
+  C.forEach(function(x){var f=fwm()[fkey(x)];cnt[f?f.state:'PENDIENTE']++});
+  var h='<div class="card"><b>🔁 Seguimiento de ventas por recuperar</b><div class="r2">Pendientes '+cnt.PENDIENTE+' · Contactadas '+cnt.CONTACTADA+' · Recuperadas '+cnt.RECUPERADA+' · Perdidas '+cnt.PERDIDA+'</div>';
+  h+=C.length?C.map(function(x,i){
+   var f=fwm()[fkey(x)]||{},st=f.state||'PENDIENTE';
+   return '<div class="ar"><div class="r1"><b style="font-weight:600">'+e(x.client)+'</b><span class="chip '+(st=='RECUPERADA'?'ok':'')+'">'+st+'</span><select class="ps wr" onchange="fwSet('+i+',this.value)">'+
+    ST.map(function(s){return '<option '+(s==st?'selected':'')+'>'+s+'</option>'}).join('')+'</select><button class="s g wr" onclick="fwNote('+i+')">✎</button></div><div class="r2">'+
+    e(nm[x.advisor_id]||'')+' · '+ddmm(x.day)+(f.note?' · '+e(f.note):'')+'</div></div>';
+  }).join(''):'<div class="r2" style="margin-top:6px">Sin canceladas este mes 🎉</div>';
+  h+='</div>';
+  var V=(S.sg||[]).filter(function(x){return x.kind=='prog'&&x.day<hoy}).sort(byDay);
+  h+='<div class="card"><b>⏰ Programadas con fecha vencida</b><div class="r2">Siguen como programadas aunque su fecha ya pasó. Revisa en la hoja si se instalaron, se reprogramaron o se cancelaron.</div>'+
+   (V.length?V.map(function(x){return '<div class="ar"><div class="r1"><b style="font-weight:600">'+e(x.client)+'</b><span class="chip">'+ddmm(x.day)+'</span></div><div class="r2">'+e(nm[x.advisor_id]||'')+(x.slot?' · '+e(x.slot):'')+'</div></div>'}).join(''):'<div class="r2" style="margin-top:6px">Ninguna 🎉</div>')+'</div>';
+  return h;
+ };
+
+ var ausHtml=function(){
+  var o=aus();
+  return '<div class="card"><b>6. Faltas y tardanzas del mes</b><div class="r2">Se marcan desde '+LIM_F+' faltas o '+LIM_T+' tardanzas.</div>'+
+   (o.length?o.map(function(x){return '<div class="ar"><div class="r1"><b>'+e(x.a.name)+'</b><span class="chip">'+x.f+' falta'+(x.f==1?'':'s')+'</span><span class="chip">'+x.t+' tardanza'+(x.t==1?'':'s')+'</span></div></div>'}).join(''):'<div class="r2" style="margin-top:6px">Nadie llega al límite este mes 🎉</div>')+'</div>';
+ };
+
+ window.fwSet=async function(i,st){
+  var x=FW.list[i];if(!x)return;
+  var k=fkey(x),cur=fwm()[k]||{};
+  var r=await sb.from('follow').upsert({k:k,state:st,note:cur.note||null,by_email:S.email,at:new Date().toISOString()});
+  if(r.error){S.msg=(r.error.message||'').indexOf('follow')>=0?'Falta crear la tabla de seguimiento en Supabase (Pegado 1).':r.error.message}
+  else{fwm()[k]={k:k,state:st,note:cur.note||null};S.msg='✔ Guardado'}
+  sup();
+ };
+ window.fwNote=async function(i){
+  var x=FW.list[i];if(!x)return;
+  var k=fkey(x),cur=fwm()[k]||{};
+  var n=prompt('Nota (opcional):',cur.note||'');
+  if(n===null)return;
+  var st=cur.state||'PENDIENTE';
+  var r=await sb.from('follow').upsert({k:k,state:st,note:n.trim()||null,by_email:S.email,at:new Date().toISOString()});
+  if(r.error){S.msg=r.error.message}else{fwm()[k]={k:k,state:st,note:n.trim()||null};S.msg='✔ Guardado'}
+  sup();
+ };
+
+ var tabOrig2=tabHtml;
+ tabHtml=function(c){
+  var h=tabOrig2(c);
+  try{
+   if(S.tab=='res')h=panel()+h;
+   else if(S.tab=='age')h+=agendaHtml();
+   else if(S.tab=='ana')h+=ausHtml();
+  }catch(x){console.error('mejoras2',x)}
+  return h;
+ };
+}catch(x){console.error('mejoras2',x)}})();
+</script>
