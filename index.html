@@ -383,3 +383,107 @@ try{localStorage.removeItem('jm_p');localStorage.removeItem('jm_auto')}catch(x){
  login=function(m){_l(m);document.querySelectorAll('label.rm').forEach(function(l){if(l.lastChild)l.lastChild.textContent='Recordar mi usuario'})};
 })();
 </script>
+<script>
+/* ===== MEJORAS: Análisis y reportes ===== */
+(function(){try{
+ var ANA={rows:null,busy:false,err:''};
+ var bar=function(w,col){return '<i><s style="width:'+Math.max(2,Math.min(100,w))+'%;background:'+col+'"></s></i>'};
+ var anaLoad=function(){
+  if(ANA.busy)return;ANA.busy=true;ANA.err='';
+  pg(function(){return sb.from('sales').select('kind,advisor_id,month').eq('month',MO)})
+   .then(function(r){ANA.rows=r||[]})
+   .catch(function(x){ANA.err=String(x&&x.message||x);ANA.rows=ANA.rows||[]})
+   .then(function(){ANA.busy=false;if(S.tab=='ana')sup()});
+ };
+ var bonoRows=function(ws){
+  var k=fmt(ws),out=[],tot=0;
+  ases().slice().sort(function(x,y){return x.name.localeCompare(y.name)}).forEach(function(a){
+   var n=wkN(a.id,ws),ov=S.ov.find(function(o){return o.advisor_id==a.id&&o.week_start==k}),
+       b=ov?ov.amount:bonusOf(rulesFor(a.profile,ws),n);
+   tot+=b;out.push([a.name,a.profile||'',n,b,ov?'SI':'NO']);
+  });
+  return{rows:out,tot:tot,k:k};
+ };
+ var anaBonos=function(back){
+  var ws=back?addD(wsOf(now),-7):wsOf(now),B=bonoRows(ws);
+  var data=[['ASESOR','PERFIL','INSTALADAS DE LA SEMANA','BONO (S/)','CORREGIDO POR EL SUPERVISOR']].concat(B.rows,[[],['TOTAL','','',B.tot,'']]);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),'Bonos');
+  XLSX.writeFile(wb,'bonos-semana-'+B.k+'.xlsx');
+ };
+ var anaHtml=function(){
+  if(!ANA.rows&&!ANA.busy)anaLoad();
+  var AS=ases(),cnt={};
+  (ANA.rows||[]).forEach(function(r){
+   var c=cnt[r.advisor_id]=cnt[r.advisor_id]||{inst:0,prog:0,canc:0};
+   if(c[r.kind]!==undefined)c[r.kind]++;
+  });
+  var h='<div class="row"><b>📈 Análisis y reportes</b><button class="s g" style="flex:none" onclick="anaRefresh()">Actualizar</button></div>';
+  if(ANA.err)h+='<p class="err">'+e(ANA.err)+'</p>';
+
+  /* 1. Motivos de cancelación */
+  var D=S.diag||{},M=D.motivos||[],mt=D.motivosTotal||0;
+  h+='<div class="card"><b>1. Por qué se cancelan las ventas</b>';
+  if(!M.length){
+   h+='<div class="r2">Todavía no hay datos. Aparecen después de actualizar el script de Google Sheet y de la siguiente sincronización.</div>';
+  }else{
+   var mx=M[0].n||1;
+   h+='<div class="r2">Canceladas del mes: '+mt+'</div>'+M.map(function(x){
+    return '<div class="bk"><b style="width:auto;flex:2;font-size:12px">'+e(tc(x.m))+'</b>'+bar(x.n/mx*100,'#FF6B57')+'<em style="width:84px;font-size:15px">'+x.n+' · '+Math.round(x.n/(mt||1)*100)+'%</em></div>';
+   }).join('');
+  }
+  h+='</div>';
+
+  /* 2. Cuántas concreta cada asesora */
+  var C=AS.map(function(a){
+   var c=cnt[a.id]||{inst:0,canc:0},d=c.inst+c.canc;
+   return{a:a,i:c.inst,c:c.canc,d:d,p:d?Math.round(c.inst/d*100):null};
+  });
+  var ti=0,tcn=0;C.forEach(function(x){ti+=x.i;tcn+=x.c});
+  var tp=(ti+tcn)?Math.round(ti/(ti+tcn)*100):0;
+  C.sort(function(x,y){return (x.p==null?999:x.p)-(y.p==null?999:y.p)});
+  h+='<div class="card"><div class="row"><b>2. Cuántas ventas concreta cada asesora</b><small style="flex:none;color:var(--mu)">Equipo '+tp+'%</small></div><div class="r2">Instaladas ÷ (instaladas + canceladas) del mes. De menor a mayor.</div>';
+  if(!ANA.rows)h+='<div class="r2">Cargando...</div>';
+  h+=C.map(function(x){
+   var low=x.p!=null&&x.d>=5&&x.p<tp-10;
+   return '<div class="bk"><b>'+e(x.a.name)+'</b>'+bar(x.p||0,low?'#FF6B57':'#1FB59A')+'<em style="font-size:18px;color:'+(low?'#FF6B57':'var(--tx)')+'">'+(x.p==null?'—':x.p+'%')+'</em></div><div class="r2" style="margin:-4px 0 4px 0">'+x.i+' instaladas · '+x.c+' canceladas'+(low?' · ⚠ conviene acompañarla':'')+'</div>';
+  }).join('')+'</div>';
+
+  /* 3. Producción por día trabajado */
+  var OK={A:1,T:1,H:1},att=S.att||[];
+  var P=AS.map(function(a){
+   var d=att.filter(function(r){return r.advisor_id==a.id&&OK[r.st]}).length,n=(S.ins[a.id]||{}).n||0;
+   return{a:a,n:n,d:d,r:d?n/d:null};
+  });
+  P.sort(function(x,y){return (y.r==null?-1:y.r)-(x.r==null?-1:x.r)});
+  var sn=0,sd=0;P.forEach(function(x){if(x.d){sn+=x.n;sd+=x.d}});
+  var pm=Math.max.apply(null,P.map(function(x){return x.r||0}).concat([1]));
+  h+='<div class="card"><div class="row"><b>3. Instaladas por día trabajado</b><small style="flex:none;color:var(--mu)">Equipo '+(sd?(sn/sd).toFixed(1):'—')+' por día</small></div><div class="r2">Cuenta los días marcados como Asistió, Tardanza u Home office.</div>';
+  h+=P.map(function(x){
+   return '<div class="bk"><b>'+e(x.a.name)+'</b>'+bar((x.r||0)/pm*100,'#5B8DEF')+'<em style="font-size:18px">'+(x.r==null?'—':x.r.toFixed(1))+'</em></div><div class="r2" style="margin:-4px 0 4px 0">'+(x.d?x.n+' instaladas en '+x.d+' días':'Sin asistencia marcada este mes')+'</div>';
+  }).join('')+'</div>';
+
+  /* 4. Bonos en Excel */
+  var B1=bonoRows(wsOf(now));
+  h+='<div class="card"><b>4. Bonos de la semana en Excel</b><div class="r2">Semana '+semL()+' · total estimado <b>S/ '+B1.tot+'</b></div><button onclick="anaBonos(0)">Descargar esta semana</button><button class="g" onclick="anaBonos(1)">Descargar semana pasada</button><div class="r2">Es una guía referencial: compárala con tu cuenta antes de pagar.</div></div>';
+
+  /* 5. Seguridad */
+  h+='<div class="card"><b>5. Seguridad de tus cuentas</b><div class="r2">Activa la verificación en dos pasos en Google, GitHub y Supabase, y agrega un segundo dueño de confianza en cada una. Si pierdes el acceso a un correo, la app deja de sincronizar.</div></div>';
+  return h;
+ };
+ var tabOrig=tabHtml;
+ tabHtml=function(c){
+  if(S.tab=='ana'){
+   try{return anaHtml()}catch(x){return '<p class="err">No se pudo abrir Análisis: '+e(x.message||x)+'</p><button class="g" onclick="S.tab=\'mas\';sup()">Volver</button>'}
+  }
+  var h=tabOrig(c);
+  if(S.tab=='mas'){
+   var key='<button class="g" style="margin-top:14px" onclick="supOut()">';
+   h=h.replace(key,'<button class="g" style="text-align:left;margin-top:6px" onclick="S.tab=\'ana\';S.msg=\'\';sup()">📈 Análisis y reportes</button>'+key);
+  }
+  return h;
+ };
+ window.anaBonos=anaBonos;
+ window.anaRefresh=function(){ANA.rows=null;refreshSup(1)};
+}catch(x){console.error('mejoras',x)}})();
+</script>
