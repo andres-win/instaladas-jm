@@ -31,17 +31,42 @@ button{background:var(--sun);color:var(--ink);font-weight:800;border:0;cursor:po
 .mu{color:var(--mu)}.err{color:var(--coral);font-weight:600}.ft{text-align:center;color:var(--mu);font-size:12px;margin:18px 0 6px}
 </style></head><body><div class="w" id="m"><p class="mu">Cargando…</p></div>
 <script>
-const VER="V01";
+const VER="V02";
 const sb=supabase.createClient("https://znrcrkzlysyqeqiyercd.supabase.co","sb_publishable_qH2iEk0R59fgmQPqt2gP3A_AxXlomyY");
 const $=s=>document.querySelector(s),e=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const EST={instalada:"Instaladas",programada:"Programadas",en_proceso:"En proceso",caida_recuperable:"Recuperables",caida:"Caídas"};
 const UNO={instalada:"Instalada",programada:"Programada",en_proceso:"En proceso",caida_recuperable:"Recuperable",caida:"Caída"};
 const MESES=["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SETIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
-let D=null,F="";
+let D=null,F="",ST=null,SEL="";
+const MO=()=>new Date(Date.now()-5*3600000).toISOString().slice(0,7);
+const nom=m=>((m||"").split("@")[0].replace(/_jm$/i,"").replace(/_/g," ")).toUpperCase()||"USUARIO";
+const slug=n=>(n||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"");
 const pie=()=>`<p class="ft">APP ${VER} · Grupo JM</p>`;
 function codigo(){const u=new URLSearchParams(location.search).get("a");if(u){localStorage.setItem("jm_code",u.trim().toLowerCase());history.replaceState(null,"",location.pathname)}return localStorage.getItem("jm_code")||""}
 function pedir(msg){$("#m").innerHTML=`<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>Instaladas JM</h1><p>Ingresa tu código de asesor para ver tus ventas.</p></div>
-<div class="card">${msg?`<p class="err">${e(msg)}</p>`:""}<input id="cd" placeholder="Tu código" autocapitalize="off" autocomplete="off"><button onclick="entrar()">Entrar</button></div>${pie()}`}
+<div class="card">${msg?`<p class="err">${e(msg)}</p>`:""}<b>Asesores</b><input id="cd" placeholder="Tu código" autocapitalize="off" autocomplete="off"><button onclick="entrar()">Entrar</button></div>
+<div class="card"><b>Jefatura y supervisión</b><p class="mu" style="margin:4px 0 0">Usa el mismo usuario y contraseña del CRM.</p><input id="lu" placeholder="Usuario o correo" autocapitalize="off" autocomplete="username"><input id="lp" type="password" placeholder="Contraseña" autocomplete="current-password"><button onclick="entrarStaff()">Ingresar</button><p class="err" id="le"></p></div>${pie()}`}
+async function entrarStaff(){const u=$("#lu").value.trim(),p=$("#lp").value;if(!u||!p)return;$("#le").textContent="Ingresando…";
+ const{error}=await sb.auth.signInWithPassword({email:u.includes("@")?u:slug(u)+"_jm@gmail.com",password:p});
+ if(error)return $("#le").textContent="Usuario o contraseña incorrectos.";const r=await sb.rpc("crm_rol");
+ if(!r.data){await sb.auth.signOut();return $("#le").textContent="Tu usuario no tiene un rol asignado en el CRM."}staff()}
+async function todas(){let r=[],i=0;for(;;){const{data,error}=await sb.from("registro_ventas").select("doc,cliente,fecha_registro,fecha_txt,fecha_inst,plan,estado,status_txt,rango_inst,asesor_id,equipo").eq("en_hoja",true).eq("mes",MO()).order("doc").range(i,i+999);if(error)throw error;r=r.concat(data);if(data.length<1000)break;i+=1000}return r}
+async function staff(){try{const[{data:{user}},R,A,S,ro]=await Promise.all([sb.auth.getUser(),todas(),sb.from("asesores").select("id,nombre").then(x=>x.data||[]),sb.from("sync_central").select("at").eq("id",1).then(x=>(x.data||[])[0]),sb.rpc("crm_rol")]);
+ const AN={};A.forEach(a=>AN[a.id]=a.nombre);ST={user:nom(user&&user.email),rol:ro.data,R,AN,at:S&&S.at};pStaff()}catch(x){$("#m").innerHTML=`<div class="card"><p class="err">No se pudo cargar.</p><p class="mu">${e(x.message||x)}</p><button onclick="staff()">Reintentar</button><button class="g" onclick="salirStaff()">Cerrar sesión</button></div>${pie()}`}}
+function aVenta(r){const f=x=>x?x.slice(8,10)+"/"+x.slice(5,7):"";return{c:r.cliente,d:(r.doc||"").slice(-4),f:f(r.fecha_registro)||r.fecha_txt||"",fi:f(r.fecha_inst),p:r.plan,e:r.estado,s:r.status_txt||"PENDIENTE",r:r.rango_inst}}
+function verAsesor(id){SEL=id;F="";const R=ST.R.filter(r=>(r.asesor_id||"-")==id);D={nombre:id=="-"?"SIN ASIGNAR":(ST.AN[id]||"?"),mes:MO(),actualizado:ST.at,ventas:R.map(aVenta),equipo:rank()};pintar()}
+function rank(){const c={};ST.R.forEach(r=>{if(r.estado=="instalada"){const n=ST.AN[r.asesor_id]||"SIN ASIGNAR";c[n]=(c[n]||0)+1}});return Object.keys(c).map(n=>({n,i:c[n]})).sort((a,b)=>b.i-a.i||a.n.localeCompare(b.n))}
+function pStaff(){SEL="";D=null;const R=ST.R,cnt=L=>{const o={t:L.length};Object.keys(EST).forEach(k=>o[k]=L.filter(v=>v.estado==k).length);return o},T=cnt(R);
+ const [y,mm]=MO().split("-"),mins=ST.at?Math.round((Date.now()-new Date(ST.at))/60000):null,pa={},pe={};
+ R.forEach(r=>{(pa[r.asesor_id||"-"]=pa[r.asesor_id||"-"]||[]).push(r);(pe[r.equipo||"SIN EQUIPO"]=pe[r.equipo||"SIN EQUIPO"]||[]).push(r)});
+ const fa=Object.keys(pa).map(k=>({k,n:k=="-"?"SIN ASIGNAR":(ST.AN[k]||"?"),c:cnt(pa[k])})).sort((a,b)=>b.c.instalada-a.c.instalada||b.c.t-a.c.t);
+ $("#m").innerHTML=`<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>Hola, ${e(ST.user)}</h1><p>${e(String(ST.rol||"").replace(/_/g," ").toUpperCase())} · Equipo completo · ${MESES[+mm-1]} ${y}</p>
+ <div class="big">${T.instalada}</div><p>instaladas del equipo de ${T.t} venta(s)</p></div>
+ <div class="st">${Object.keys(EST).map(k=>`<div><small>${EST[k]}</small><strong>${T[k]}</strong></div>`).join("")}</div>
+ <div class="card"><b>Por equipo</b>${Object.keys(pe).sort().map(k=>{const c=cnt(pe[k]);return`<div class="rk"><span>${e(k)}</span><span>${c.instalada} inst. · ${c.t} ventas</span></div>`}).join("")}</div>
+ <div class="card"><b>Por asesor</b> <span class="mu">· toca uno para ver sus ventas</span>${fa.map((x,i)=>`<div class="rk" style="cursor:pointer" onclick="verAsesor('${x.k}')"><span>${i+1}. ${e(x.n)}</span><span>${x.c.instalada} inst. · ${x.c.programada} prog. · ${x.c.t} total ›</span></div>`).join("")||`<p class="mu">Sin ventas este mes.</p>`}</div>
+ <div class="card"><p class="mu" style="margin:0">${mins==null?"Todavía no hay sincronización.":`Datos actualizados hace ${mins} min.`}</p><button onclick="staff()">Actualizar</button><button class="g" onclick="salirStaff()">Cerrar sesión</button></div>${pie()}`}
+async function salirStaff(){await sb.auth.signOut();ST=null;pedir()}
 function entrar(){const c=$("#cd").value.trim().toLowerCase();if(!c)return;localStorage.setItem("jm_code",c);cargar()}
 function salir(){localStorage.removeItem("jm_code");D=null;pedir()}
 async function cargar(){const c=codigo();if(!c)return pedir();
@@ -53,13 +78,14 @@ function pintar(){const V=D.ventas||[],cnt={};Object.keys(EST).forEach(k=>cnt[k]
  const [y,mm]=(D.mes||"").split("-"),mes=MESES[+mm-1]||"";const L=F?V.filter(v=>v.e==F):V;
  const mins=D.actualizado?Math.round((Date.now()-new Date(D.actualizado))/60000):null;
  const hora=new Date().getHours(),sal=hora<12?"Buenos días":hora<19?"Buenas tardes":"Buenas noches";
- $("#m").innerHTML=`<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>${sal}, ${e(D.nombre)}</h1><p>${mes} ${y||""}</p>
+ $("#m").innerHTML=`${ST?`<button class="g" style="margin:0 0 12px" onclick="pStaff()">← Volver al equipo</button>`:""}<div class="hero"><div class="logo"><img src="logo.png" alt="Grupo JM"></div><h1>${ST?e(D.nombre):`${sal}, ${e(D.nombre)}`}</h1><p>${mes} ${y||""}</p>
  <div class="big">${cnt.instalada}</div><p>instaladas este mes${V.length?` de ${V.length} venta(s)`:""}</p></div>
  <div class="st">${Object.keys(EST).map(k=>`<div class="${F==k?"on":""}" onclick="F=F=='${k}'?'':'${k}';pintar()"><small>${EST[k]}</small><strong>${cnt[k]}</strong></div>`).join("")}</div>
- <div class="card"><b>${F?EST[F]:"Todas mis ventas"}</b> <span class="mu">(${L.length})</span>${F?` · <a href="#" onclick="F='';pintar();return false">ver todas</a>`:""}
+ <div class="card"><b>${F?EST[F]:(ST?"Sus ventas":"Todas mis ventas")}</b> <span class="mu">(${L.length})</span>${F?` · <a href="#" onclick="F='';pintar();return false">ver todas</a>`:""}
  ${L.length?L.map(v=>`<div class="v"><div><b>${e(v.c||"—")}</b><small>Doc. ****${e(v.d)} · ${e(v.p||"POR DEFINIR")}</small><small>Venta: ${e(v.f||"—")}${v.fi?` · Instalación: ${e(v.fi)}`:""}${v.r&&v.e=="programada"?` · ${e(v.r)}`:""}</small></div><div style="text-align:right"><span class="chip ${e(v.e)}">${UNO[v.e]||e(v.e)}</span><small class="mu">${e(v.s)}</small></div></div>`).join(""):`<p class="mu">Todavía no tienes ventas aquí este mes.</p>`}</div>
  <div class="card"><b>Ranking del equipo</b> <span class="mu">· instaladas del mes</span>${(D.equipo||[]).map((x,i)=>`<div class="rk ${x.n==D.nombre?"yo":""}"><span>${i+1}. ${e(x.n)}</span><span>${x.i}</span></div>`).join("")||`<p class="mu">Sin datos todavía.</p>`}</div>
- <div class="card"><p class="mu" style="margin:0">${mins==null?"Todavía no hay sincronización.":`Datos actualizados hace ${mins} min.`}</p><button onclick="cargar()">Actualizar</button><button class="g" onclick="salir()">Cambiar de usuario</button></div>${pie()}`}
+ ${ST?"":`<div class="card"><p class="mu" style="margin:0">${mins==null?"Todavía no hay sincronización.":`Datos actualizados hace ${mins} min.`}</p><button onclick="cargar()">Actualizar</button><button class="g" onclick="salir()">Cambiar de usuario</button></div>`}${pie()}`}
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
-cargar();setInterval(()=>{if(D&&document.visibilityState=="visible")cargar()},300000);
+(async()=>{try{const{data:{session}}=await sb.auth.getSession();if(session){const r=await sb.rpc("crm_rol");if(r.data)return staff()}}catch(_){}cargar()})();
+setInterval(()=>{if(document.visibilityState!="visible")return;if(ST&&!SEL)staff();else if(!ST&&D)cargar()},300000);
 </script></body></html>
