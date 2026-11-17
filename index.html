@@ -42,7 +42,8 @@ hr{border:0;border-top:1px dashed #8a93b355;margin:14px 0 4px}.okm{color:var(--m
  .st{grid-template-columns:repeat(2,1fr);gap:8px}.st strong{font-size:21px}.v{flex-wrap:wrap}.row3{grid-template-columns:1fr}.row2{grid-template-columns:1fr}.logo img{height:34px}}
 </style></head><body><button id="tema" onclick="cambiaTema()" title="Modo claro / oscuro">🌙</button><div class="w" id="m"><p class="mu">Cargando…</p></div>
 <script>
-const VER="V06";
+const VER="V07";
+const STAFF=["admin","jefe","supervisor","back_office","back_data"];
 /* tema claro / oscuro */
 function aplicaTema(t){document.querySelectorAll("style").forEach(st=>{if(st.dataset.o===undefined)st.dataset.o=st.textContent;const o=st.dataset.o;if(!/prefers-color-scheme\s*:\s*dark/.test(o))return;
  st.textContent=t?o.replace(/\(\s*prefers-color-scheme\s*:\s*dark\s*\)/g,t=="dark"?" all":" not all"):o});document.documentElement.style.colorScheme=t||"";const b=document.getElementById("tema");if(b)b.textContent=temaActual()=="dark"?"☀️":"🌙"}
@@ -66,7 +67,7 @@ function pedir(msg){$("#m").innerHTML=`<div class="hero"><div class="logo"><img 
 async function entrarStaff(){const u=$("#lu").value.trim(),p=$("#lp").value;if(!u||!p)return;$("#le").textContent="Ingresando…";
  const{error}=await sb.auth.signInWithPassword({email:u.includes("@")?u:slug(u)+"_jm@gmail.com",password:p});
  if(error)return $("#le").textContent="Usuario o contraseña incorrectos.";const r=await sb.rpc("crm_rol");
- if(!r.data){await sb.auth.signOut();return $("#le").textContent="Tu usuario no tiene un rol asignado en el CRM."}staff()}
+ if(!r.data){await sb.auth.signOut();return $("#le").textContent="Tu usuario no tiene un rol asignado en el CRM."}if(!STAFF.includes(r.data))return comoAsesor();staff()}
 async function todas(){let r=[],i=0;for(;;){const{data,error}=await sb.from("registro_ventas").select("doc,cliente,fecha_registro,fecha_txt,fecha_inst,plan,estado,status_txt,rango_inst,asesor_id,equipo").eq("en_hoja",true).eq("mes",MO()).order("doc").range(i,i+999);if(error)throw error;r=r.concat(data);if(data.length<1000)break;i+=1000}return r}
 async function staff(){try{const[{data:{user}},R,A,S,ro]=await Promise.all([sb.auth.getUser(),todas(),sb.from("asesores").select("id,nombre").then(x=>x.data||[]),sb.from("sync_central").select("at").eq("id",1).then(x=>(x.data||[])[0]),sb.rpc("crm_rol")]);
  const AN={};A.forEach(a=>AN[a.id]=a.nombre);ST={user:nom(user&&user.email),rol:ro.data,R,AN,at:S&&S.at};pStaff()}catch(x){$("#m").innerHTML=`<div class="card"><p class="err">No se pudo cargar.</p><p class="mu">${e(x.message||x)}</p><button onclick="staff()">Reintentar</button><button class="g" onclick="salirStaff()">Cerrar sesión</button></div>${pie()}`}}
@@ -104,6 +105,7 @@ function pintar(){ const V=D.ventas||[],cnt={};Object.keys(EST).forEach(k=>cnt[k
  ${ST?"":`<div class="card"><p class="mu" style="margin:0">${mins==null?"Todavía no hay sincronización.":`Datos actualizados hace ${mins} min.`}</p><button onclick="cargar()">Actualizar</button><button class="g" onclick="salir()">Cambiar de usuario</button></div>`}${pie()}`}
 </script><script>
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
-(async()=>{try{const{data:{session}}=await sb.auth.getSession();if(session){const r=await sb.rpc("crm_rol");if(r.data)return staff()}}catch(_){}cargar()})();
+async function comoAsesor(){const c=await sb.rpc("crm_mi_codigo");await sb.auth.signOut();if(c.data){localStorage.setItem("jm_code",c.data);return cargar()}pedir("Tu usuario no está vinculado a un asesor activo. Avisa a tu supervisor.")}
+(async()=>{try{const{data:{session}}=await sb.auth.getSession();if(session){const r=await sb.rpc("crm_rol");if(r.data&&!STAFF.includes(r.data))return comoAsesor();if(r.data)return staff()}}catch(_){}cargar()})();
 setInterval(()=>{if(document.visibilityState!="visible")return;if(ST&&!SEL)staff();else if(!ST&&D)cargar()},300000);
 </script></body></html>
