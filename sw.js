@@ -1,5 +1,5 @@
 // Cambia este número cuando quieras obligar a todas las apps abiertas a actualizarse
-const VER = 'V02';
+const VER = 'V05';
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil((async () => {
   await clients.claim();

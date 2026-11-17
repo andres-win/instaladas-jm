@@ -28,10 +28,18 @@ button{background:var(--sun);color:var(--ink);font-weight:800;border:0;cursor:po
 .chip{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;color:#fff}
 .instalada{background:var(--mint)}.programada{background:var(--blue)}.en_proceso{background:var(--amber)}.caida_recuperable{background:#A855F7}.caida{background:var(--coral)}
 .rk{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #8a93b333}.rk.yo{color:var(--sun);font-weight:800}
+textarea{font:inherit;border-radius:12px;border:1.5px dashed #8a93b388;padding:11px;background:var(--card);color:var(--tx);width:100%;margin-top:10px;min-height:70px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.row3 button{margin:0;padding:11px 6px}
+.fl{display:block;margin-top:10px}.fl span{font-size:12px;font-weight:600;color:var(--mu)}.fl input,.fl select{margin-top:4px}.fl small{display:block;margin-top:3px;font-size:12px}
+select{font:inherit;border-radius:12px;border:1.5px solid #8a93b355;padding:11px;background:var(--card);color:var(--tx);width:100%}
+hr{border:0;border-top:1px dashed #8a93b355;margin:14px 0 4px}.okm{color:var(--mint);font-weight:700}
+.tb{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.tb button{margin:0;background:#8a93b333;color:var(--tx)}.tb button.on{background:var(--ink);color:var(--sun)}
+.bad{border-color:var(--coral)!important;background:#ff6b5714!important}.row2{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}.row2>*{margin-top:4px}
+.edok{background:#1fb59a22;border:1.5px solid var(--mint);border-radius:12px;padding:10px;margin-top:8px;font-size:14px}.edno{background:#f59e0b22;border:1.5px solid var(--amber);border-radius:12px;padding:10px;margin-top:8px;font-size:13px}
 .mu{color:var(--mu)}.err{color:var(--coral);font-weight:600}.ft{text-align:center;color:var(--mu);font-size:12px;margin:18px 0 6px}
 </style></head><body><div class="w" id="m"><p class="mu">Cargando…</p></div>
 <script>
-const VER="V02";
+const VER="V05";
 const sb=supabase.createClient("https://znrcrkzlysyqeqiyercd.supabase.co","sb_publishable_qH2iEk0R59fgmQPqt2gP3A_AxXlomyY");
 const $=s=>document.querySelector(s),e=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const EST={instalada:"Instaladas",programada:"Programadas",en_proceso:"En proceso",caida_recuperable:"Recuperables",caida:"Caídas"};
@@ -56,7 +64,7 @@ async function staff(){try{const[{data:{user}},R,A,S,ro]=await Promise.all([sb.a
 function aVenta(r){const f=x=>x?x.slice(8,10)+"/"+x.slice(5,7):"";return{c:r.cliente,d:(r.doc||"").slice(-4),f:f(r.fecha_registro)||r.fecha_txt||"",fi:f(r.fecha_inst),p:r.plan,e:r.estado,s:r.status_txt||"PENDIENTE",r:r.rango_inst}}
 function verAsesor(id){SEL=id;F="";const R=ST.R.filter(r=>(r.asesor_id||"-")==id);D={nombre:id=="-"?"SIN ASIGNAR":(ST.AN[id]||"?"),mes:MO(),actualizado:ST.at,ventas:R.map(aVenta),equipo:rank()};pintar()}
 function rank(){const c={};ST.R.forEach(r=>{if(r.estado=="instalada"){const n=ST.AN[r.asesor_id]||"SIN ASIGNAR";c[n]=(c[n]||0)+1}});return Object.keys(c).map(n=>({n,i:c[n]})).sort((a,b)=>b.i-a.i||a.n.localeCompare(b.n))}
-function pStaff(){SEL="";D=null;const R=ST.R,cnt=L=>{const o={t:L.length};Object.keys(EST).forEach(k=>o[k]=L.filter(v=>v.estado==k).length);return o},T=cnt(R);
+function pStaff(){SEL="";D=null; const R=ST.R,cnt=L=>{const o={t:L.length};Object.keys(EST).forEach(k=>o[k]=L.filter(v=>v.estado==k).length);return o},T=cnt(R);
  const [y,mm]=MO().split("-"),mins=ST.at?Math.round((Date.now()-new Date(ST.at))/60000):null,pa={},pe={};
  R.forEach(r=>{(pa[r.asesor_id||"-"]=pa[r.asesor_id||"-"]||[]).push(r);(pe[r.equipo||"SIN EQUIPO"]=pe[r.equipo||"SIN EQUIPO"]||[]).push(r)});
  const fa=Object.keys(pa).map(k=>({k,n:k=="-"?"SIN ASIGNAR":(ST.AN[k]||"?"),c:cnt(pa[k])})).sort((a,b)=>b.c.instalada-a.c.instalada||b.c.t-a.c.t);
@@ -74,7 +82,7 @@ async function cargar(){const c=codigo();if(!c)return pedir();
  if(error)return $("#m").innerHTML=`<div class="card"><p class="err">No se pudo conectar. Revisa tu internet.</p><p class="mu">${e(error.message)}</p><button onclick="cargar()">Reintentar</button></div>${pie()}`;
  if(!data){localStorage.removeItem("jm_code");return pedir("Ese código no existe o está desactivado. Pídele tu link a tu supervisor.")}
  D=data;pintar()}
-function pintar(){const V=D.ventas||[],cnt={};Object.keys(EST).forEach(k=>cnt[k]=V.filter(v=>v.e==k).length);
+function pintar(){ const V=D.ventas||[],cnt={};Object.keys(EST).forEach(k=>cnt[k]=V.filter(v=>v.e==k).length);
  const [y,mm]=(D.mes||"").split("-"),mes=MESES[+mm-1]||"";const L=F?V.filter(v=>v.e==F):V;
  const mins=D.actualizado?Math.round((Date.now()-new Date(D.actualizado))/60000):null;
  const hora=new Date().getHours(),sal=hora<12?"Buenos días":hora<19?"Buenas tardes":"Buenas noches";
@@ -85,6 +93,7 @@ function pintar(){const V=D.ventas||[],cnt={};Object.keys(EST).forEach(k=>cnt[k]
  ${L.length?L.map(v=>`<div class="v"><div><b>${e(v.c||"—")}</b><small>Doc. ****${e(v.d)} · ${e(v.p||"POR DEFINIR")}</small><small>Venta: ${e(v.f||"—")}${v.fi?` · Instalación: ${e(v.fi)}`:""}${v.r&&v.e=="programada"?` · ${e(v.r)}`:""}</small></div><div style="text-align:right"><span class="chip ${e(v.e)}">${UNO[v.e]||e(v.e)}</span><small class="mu">${e(v.s)}</small></div></div>`).join(""):`<p class="mu">Todavía no tienes ventas aquí este mes.</p>`}</div>
  <div class="card"><b>Ranking del equipo</b> <span class="mu">· instaladas del mes</span>${(D.equipo||[]).map((x,i)=>`<div class="rk ${x.n==D.nombre?"yo":""}"><span>${i+1}. ${e(x.n)}</span><span>${x.i}</span></div>`).join("")||`<p class="mu">Sin datos todavía.</p>`}</div>
  ${ST?"":`<div class="card"><p class="mu" style="margin:0">${mins==null?"Todavía no hay sincronización.":`Datos actualizados hace ${mins} min.`}</p><button onclick="cargar()">Actualizar</button><button class="g" onclick="salir()">Cambiar de usuario</button></div>`}${pie()}`}
+</script><script>
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 (async()=>{try{const{data:{session}}=await sb.auth.getSession();if(session){const r=await sb.rpc("crm_rol");if(r.data)return staff()}}catch(_){}cargar()})();
 setInterval(()=>{if(document.visibilityState!="visible")return;if(ST&&!SEL)staff();else if(!ST&&D)cargar()},300000);
