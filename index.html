@@ -37,9 +37,18 @@ hr{border:0;border-top:1px dashed #8a93b355;margin:14px 0 4px}.okm{color:var(--m
 .bad{border-color:var(--coral)!important;background:#ff6b5714!important}.row2{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}.row2>*{margin-top:4px}
 .edok{background:#1fb59a22;border:1.5px solid var(--mint);border-radius:12px;padding:10px;margin-top:8px;font-size:14px}.edno{background:#f59e0b22;border:1.5px solid var(--amber);border-radius:12px;padding:10px;margin-top:8px;font-size:13px}
 .mu{color:var(--mu)}.err{color:var(--coral);font-weight:600}.ft{text-align:center;color:var(--mu);font-size:12px;margin:18px 0 6px}
-</style></head><body><div class="w" id="m"><p class="mu">Cargando…</p></div>
+#tema{position:fixed;top:calc(10px + env(safe-area-inset-top));right:10px;z-index:50;width:42px;height:42px;margin:0;padding:0;border-radius:50%;background:var(--card);color:var(--tx);border:1.5px solid #8a93b355;font-size:19px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+@media(max-width:600px){.w{padding:12px}.hero{padding:18px;border-radius:18px}.hero h1{font-size:21px;padding-right:44px}.big{font-size:52px}.card{padding:14px;border-radius:16px}
+ .st{grid-template-columns:repeat(2,1fr);gap:8px}.st strong{font-size:21px}.v{flex-wrap:wrap}.row3{grid-template-columns:1fr}.row2{grid-template-columns:1fr}.logo img{height:34px}}
+</style></head><body><button id="tema" onclick="cambiaTema()" title="Modo claro / oscuro">🌙</button><div class="w" id="m"><p class="mu">Cargando…</p></div>
 <script>
-const VER="V05";
+const VER="V06";
+/* tema claro / oscuro */
+function aplicaTema(t){document.querySelectorAll("style").forEach(st=>{if(st.dataset.o===undefined)st.dataset.o=st.textContent;const o=st.dataset.o;if(!/prefers-color-scheme\s*:\s*dark/.test(o))return;
+ st.textContent=t?o.replace(/\(\s*prefers-color-scheme\s*:\s*dark\s*\)/g,t=="dark"?" all":" not all"):o});document.documentElement.style.colorScheme=t||"";const b=document.getElementById("tema");if(b)b.textContent=temaActual()=="dark"?"☀️":"🌙"}
+function temaActual(){return document.documentElement.dataset.t||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light")}
+function cambiaTema(){const n=temaActual()=="dark"?"light":"dark";document.documentElement.dataset.t=n;aplicaTema(n);try{localStorage.jm_theme=n}catch(_){}}
+try{const t=localStorage.jm_theme;if(t)document.documentElement.dataset.t=t;aplicaTema(t||"")}catch(_){}
 const sb=supabase.createClient("https://znrcrkzlysyqeqiyercd.supabase.co","sb_publishable_qH2iEk0R59fgmQPqt2gP3A_AxXlomyY");
 const $=s=>document.querySelector(s),e=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const EST={instalada:"Instaladas",programada:"Programadas",en_proceso:"En proceso",caida_recuperable:"Recuperables",caida:"Caídas"};
